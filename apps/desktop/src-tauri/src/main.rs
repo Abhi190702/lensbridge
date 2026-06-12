@@ -26,6 +26,13 @@ fn main() {
             let state = AppState::new();
             state.start_signaling_server();
             app.manage(state);
+
+            if let Some(window) = app.get_webview_window("main") {
+                window.show()?;
+                window.set_focus()?;
+                window.set_title("LensBridge Desktop")?;
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

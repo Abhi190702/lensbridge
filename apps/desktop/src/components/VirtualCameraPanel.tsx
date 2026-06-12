@@ -32,6 +32,10 @@ export function VirtualCameraPanel() {
             LensBridge V1 gives you the live desktop preview; OBS Virtual Camera turns that preview into a selectable
             camera device today.
           </p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            If OBS does not list LensBridge, restart LensBridge Desktop, keep the window open and unminimized, then
+            reopen the Window Capture source properties.
+          </p>
           <div className="mt-4 grid gap-2 text-sm text-slate-300 sm:grid-cols-3">
             <Step number="1" label="Connect phone" />
             <Step number="2" label="Capture LensBridge in OBS" />

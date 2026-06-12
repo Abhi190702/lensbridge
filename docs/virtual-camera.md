@@ -19,6 +19,14 @@ Use this path today:
 
 If the browser preview feels reversed, click Mirror output under the LensBridge Desktop preview before OBS captures it.
 
+If LensBridge is missing from OBS Window Capture:
+
+1. Restart LensBridge Desktop.
+2. Keep the LensBridge Desktop window open and unminimized.
+3. Reopen the OBS Window Capture source properties.
+4. Pick `[lensbridge-desktop.exe]: LensBridge Desktop`.
+5. If it still does not appear, restart OBS or use Display Capture and crop to the LensBridge preview.
+
 V2:
 
 - Linux `v4l2loopback`.

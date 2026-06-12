@@ -10,3 +10,7 @@ Use OBS Virtual Camera when an app needs LensBridge to appear in a normal camera
 6. Select OBS Virtual Camera in Chrome, Zoom, Omegle, or another browser app.
 
 If the output is reversed in the browser preview, click Mirror output under the LensBridge preview before OBS captures it.
+
+If OBS does not list LensBridge, the desktop window is not visible to Windows. Restart LensBridge Desktop, keep it open
+and unminimized, then reopen the Window Capture source properties. The entry should be
+`[lensbridge-desktop.exe]: LensBridge Desktop`.
