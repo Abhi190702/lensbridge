@@ -27,6 +27,13 @@ If LensBridge is missing from OBS Window Capture:
 4. Pick `[lensbridge-desktop.exe]: LensBridge Desktop`.
 5. If it still does not appear, restart OBS or use Display Capture and crop to the LensBridge preview.
 
+If OBS shows LensBridge but the preview is black:
+
+1. Restart LensBridge Desktop after pulling the latest code.
+2. In OBS Window Capture, change Capture Method from Automatic to Windows 10 (1903 and up).
+3. If it is still black, try BitBlt.
+4. If both methods are black, use Display Capture and crop to the LensBridge preview.
+
 V2:
 
 - Linux `v4l2loopback`.

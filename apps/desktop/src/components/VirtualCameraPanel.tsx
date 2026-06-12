@@ -36,6 +36,10 @@ export function VirtualCameraPanel() {
             If OBS does not list LensBridge, restart LensBridge Desktop, keep the window open and unminimized, then
             reopen the Window Capture source properties.
           </p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            If the OBS preview is black, switch Capture Method from Automatic to Windows 10 (1903 and up). If needed,
+            try BitBlt next.
+          </p>
           <div className="mt-4 grid gap-2 text-sm text-slate-300 sm:grid-cols-3">
             <Step number="1" label="Connect phone" />
             <Step number="2" label="Capture LensBridge in OBS" />
