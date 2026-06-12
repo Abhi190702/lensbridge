@@ -1,0 +1,13 @@
+{
+  "name": "@lensbridge/protocol",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "build": "echo \"Protocol package is documentation-only for V1\"",
+    "lint": "echo \"No lint targets for protocol docs\"",
+    "typecheck": "echo \"No typecheck targets for protocol docs\"",
+    "test": "echo \"No tests for protocol docs\"",
+    "clean": "echo \"Nothing to clean\""
+  }
+}

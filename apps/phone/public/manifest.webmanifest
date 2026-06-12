@@ -1,0 +1,17 @@
+{
+  "name": "LensBridge Phone",
+  "short_name": "LensBridge",
+  "description": "Use your phone camera as a LensBridge source.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c111d",
+  "theme_color": "#0c111d",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

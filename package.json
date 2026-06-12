@@ -1,0 +1,32 @@
+{
+  "name": "lensbridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-source local-first universal camera bridge.",
+  "packageManager": "pnpm@11.3.0",
+  "scripts": {
+    "dev": "turbo dev --parallel",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "format": "prettier --write .",
+    "clean": "turbo clean",
+    "dev:phone": "pnpm --filter @lensbridge/phone dev",
+    "dev:desktop": "pnpm --filter @lensbridge/desktop tauri dev",
+    "build:phone": "pnpm --filter @lensbridge/phone build",
+    "build:desktop": "pnpm --filter @lensbridge/desktop build",
+    "check:rust": "cd apps/desktop/src-tauri && cargo check",
+    "test:rust": "cd apps/desktop/src-tauri && cargo test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^2.1.8"
+  }
+}

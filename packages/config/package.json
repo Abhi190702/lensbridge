@@ -1,0 +1,13 @@
+{
+  "name": "@lensbridge/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo \"Shared config package has no build output\"",
+    "lint": "echo \"Shared config package has no lint target\"",
+    "typecheck": "echo \"Shared config package has no typecheck target\"",
+    "test": "echo \"Shared config package has no tests\"",
+    "clean": "echo \"Nothing to clean\""
+  }
+}

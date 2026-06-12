@@ -1,0 +1,15 @@
+name: Rust Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/src-tauri/**"
+
+jobs:
+  cargo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cd apps/desktop/src-tauri && cargo check
+      - run: cd apps/desktop/src-tauri && cargo test

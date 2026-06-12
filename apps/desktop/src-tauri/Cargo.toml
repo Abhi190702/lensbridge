@@ -1,0 +1,25 @@
+[package]
+name = "lensbridge-desktop"
+version = "0.1.0"
+description = "LensBridge Desktop"
+authors = ["Abhijeet Ranjan"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "=2.2.0", features = [] }
+
+[dependencies]
+axum = { version = "0.7", features = ["ws"] }
+chrono = { version = "0.4", features = ["clock", "serde"] }
+futures-util = "0.3"
+local-ip-address = "0.6"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "=2.2.0", features = [] }
+tauri-runtime = "=2.3.0"
+tauri-runtime-wry = "=2.3.0"
+tauri-utils = "=2.4.0"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
+tower-http = { version = "0.6", features = ["cors"] }
+time = "=0.3.36"
