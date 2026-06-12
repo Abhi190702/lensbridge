@@ -15,6 +15,10 @@ export function ConnectPage({ initialError, onPair }: { initialError: string | n
           Scan the QR code in LensBridge Desktop, then allow camera access. Your video is sent directly to your desktop
           over the local network.
         </p>
+        <p className="mt-4 rounded-lg border border-brand/25 bg-brand/10 p-3 text-sm leading-6 text-slate-200">
+          Looking for the QR code? It appears in the LensBridge Desktop app window after
+          <span className="font-semibold"> pnpm --filter @lensbridge/desktop tauri dev</span> finishes building.
+        </p>
         {initialError ? <p className="mt-4 rounded-lg border border-red-400/25 bg-red-400/10 p-3 text-sm text-red-100">{initialError}</p> : null}
         <ManualConnect onPair={onPair} />
       </div>

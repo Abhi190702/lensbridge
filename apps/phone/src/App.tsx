@@ -16,7 +16,7 @@ export default function App() {
   const support = browserSupport();
 
   if (!support.supported) {
-    return <ErrorPage title="Browser not supported" message={support.reason} />;
+    return <ErrorPage title={support.title} message={support.reason} />;
   }
 
   if (!pairing) {
