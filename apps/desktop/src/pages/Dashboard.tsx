@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { PairingCard } from "../components/PairingCard";
 import { QualityPanel } from "../components/QualityPanel";
 import { SourcePreview } from "../components/SourcePreview";
@@ -11,6 +12,8 @@ interface DashboardProps {
 }
 
 export function Dashboard({ pairing, receiver }: DashboardProps) {
+  const [mirrorPreview, setMirrorPreview] = useState(false);
+
   return (
     <div className="grid gap-5">
       {pairing.error ? <ErrorState message={pairing.error} onRetry={pairing.refresh} /> : null}
@@ -24,7 +27,12 @@ export function Dashboard({ pairing, receiver }: DashboardProps) {
         onRegenerate={pairing.regenerate}
       />
       <div className="grid gap-5 xl:grid-cols-[1fr_24rem]">
-        <SourcePreview stream={receiver.remoteStream} metrics={receiver.metrics} />
+        <SourcePreview
+          stream={receiver.remoteStream}
+          metrics={receiver.metrics}
+          mirrored={mirrorPreview}
+          onToggleMirror={() => setMirrorPreview((value) => !value)}
+        />
         <QualityPanel />
       </div>
     </div>
