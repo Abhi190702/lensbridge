@@ -19,10 +19,25 @@ function Unregister-Filter {
     )
 
     if (Test-Path -LiteralPath $DllPath) {
-        & $RegSvr32 /s /u $DllPath
-        if ($LASTEXITCODE -ne 0) {
-            throw "regsvr32 unregister failed for $DllPath with exit code $LASTEXITCODE"
+        Unblock-DriverDll -DllPath $DllPath
+        $process = Start-Process -FilePath $RegSvr32 -ArgumentList @("/s", "/u", "`"$DllPath`"") -Wait -PassThru -WindowStyle Hidden
+        if ($process.ExitCode -ne 0) {
+            throw "regsvr32 unregister failed for $DllPath with exit code $($process.ExitCode)"
         }
+    }
+}
+
+function Unblock-DriverDll {
+    param([string]$DllPath)
+
+    try {
+        $zone = Get-Item -LiteralPath $DllPath -Stream Zone.Identifier -ErrorAction SilentlyContinue
+        if ($zone) {
+            Write-Host "Removing downloaded-file block from $([IO.Path]::GetFileName($DllPath))..."
+            Unblock-File -LiteralPath $DllPath
+        }
+    } catch {
+        Write-Warning "Could not remove downloaded-file block from $DllPath. $($_.Exception.Message)"
     }
 }
 

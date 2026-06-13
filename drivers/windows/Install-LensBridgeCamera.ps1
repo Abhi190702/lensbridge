@@ -24,10 +24,34 @@ function Invoke-RegSvr32 {
         throw "Missing driver DLL: $DllPath"
     }
 
+    Unblock-DriverDll -DllPath $DllPath
+
     $nameArg = "/i:UnityCaptureName=$Name"
-    & $RegSvr32 /s $nameArg $DllPath
-    if ($LASTEXITCODE -ne 0) {
-        throw "regsvr32 failed for $DllPath with exit code $LASTEXITCODE"
+    $process = Start-Process -FilePath $RegSvr32 -ArgumentList @("/s", $nameArg, "`"$DllPath`"") -Wait -PassThru -WindowStyle Hidden
+    if ($process.ExitCode -ne 0) {
+        $message = @(
+            "regsvr32 failed for $DllPath with exit code $($process.ExitCode).",
+            "Try these fixes:",
+            "1. Confirm this PowerShell window is running as Administrator.",
+            "2. Install Microsoft Visual C++ 2015-2022 Redistributable for x64 and x86.",
+            "3. Keep the repo in a local, fully synced folder; OneDrive cloud-only files cannot be registered.",
+            "4. Run: Unblock-File -LiteralPath `"$DllPath`""
+        ) -join [Environment]::NewLine
+        throw $message
+    }
+}
+
+function Unblock-DriverDll {
+    param([string]$DllPath)
+
+    try {
+        $zone = Get-Item -LiteralPath $DllPath -Stream Zone.Identifier -ErrorAction SilentlyContinue
+        if ($zone) {
+            Write-Host "Removing downloaded-file block from $([IO.Path]::GetFileName($DllPath))..."
+            Unblock-File -LiteralPath $DllPath
+        }
+    } catch {
+        Write-Warning "Could not remove downloaded-file block from $DllPath. $($_.Exception.Message)"
     }
 }
 
