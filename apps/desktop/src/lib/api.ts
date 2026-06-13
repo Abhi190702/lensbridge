@@ -13,6 +13,23 @@ export interface ObsVirtualCameraStatus {
   message: string;
 }
 
+export interface UnityCaptureFramePayload {
+  width: number;
+  height: number;
+  rgbaBase64: string;
+  mirror: boolean;
+}
+
+export interface UnityCapturePublishResult {
+  ready: boolean;
+  delivered: boolean;
+  skippedFrame: boolean;
+  framesDelivered: number;
+  width: number;
+  height: number;
+  message: string;
+}
+
 function isTauriRuntime() {
   return "__TAURI_INTERNALS__" in window;
 }
@@ -58,6 +75,28 @@ export async function getObsVirtualCameraStatus(): Promise<ObsVirtualCameraStatu
     devices: [],
     message: "Camera-device detection is available in the Tauri desktop app."
   };
+}
+
+export async function publishUnityCaptureFrame(frame: UnityCaptureFramePayload): Promise<UnityCapturePublishResult> {
+  if (isTauriRuntime()) {
+    return invoke<UnityCapturePublishResult>("publish_unity_capture_frame", { frame });
+  }
+
+  return {
+    ready: false,
+    delivered: false,
+    skippedFrame: false,
+    framesDelivered: 0,
+    width: frame.width,
+    height: frame.height,
+    message: "Direct camera bridge is available in the Tauri desktop app."
+  };
+}
+
+export async function resetUnityCaptureBridge(): Promise<void> {
+  if (isTauriRuntime()) {
+    await invoke("reset_unity_capture_bridge");
+  }
 }
 
 function createBrowserMockSession(): PairingPayload {

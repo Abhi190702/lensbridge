@@ -7,17 +7,20 @@ import { ConnectedSourceCard } from "../components/ConnectedSourceCard";
 import { OutputModeSelector } from "../components/OutputModeSelector";
 import { PrimaryActionBar } from "../components/PrimaryActionBar";
 import { StreamHealthCard } from "../components/StreamHealthCard";
+import { DirectCameraBridgePanel } from "../components/DirectCameraBridgePanel";
 import type { useDesktopReceiver } from "../hooks/useDesktopEvents";
+import type { DirectCameraBridgeState } from "../hooks/useUnityCaptureBridge";
 import type { usePairing } from "../hooks/usePairing";
 
 interface DashboardProps {
   pairing: ReturnType<typeof usePairing>;
   receiver: ReturnType<typeof useDesktopReceiver>;
+  directCamera: DirectCameraBridgeState;
   onOpenObsOutput: () => void;
   onOpenGuide: () => void;
 }
 
-export function Dashboard({ pairing, receiver, onOpenObsOutput, onOpenGuide }: DashboardProps) {
+export function Dashboard({ pairing, receiver, directCamera, onOpenObsOutput, onOpenGuide }: DashboardProps) {
   const [mirrorPreview, setMirrorPreview] = useState(false);
   const streamReady = Boolean(receiver.remoteStream);
 
@@ -53,6 +56,7 @@ export function Dashboard({ pairing, receiver, onOpenObsOutput, onOpenGuide }: D
           onToggleMirror={() => setMirrorPreview((value) => !value)}
         />
         <div className="grid gap-5">
+          <DirectCameraBridgePanel bridge={directCamera} compact />
           <OutputModeSelector streamReady={streamReady} onOpenObsOutput={onOpenObsOutput} />
           {streamReady ? <StreamHealthCard metrics={receiver.metrics} /> : null}
           <QualityPanel />

@@ -56,7 +56,9 @@ fn main() {
             commands::disconnect_session,
             commands::list_source_statuses,
             commands::get_virtual_camera_status,
-            commands::get_obs_virtual_camera_status
+            commands::get_obs_virtual_camera_status,
+            commands::publish_unity_capture_frame,
+            commands::reset_unity_capture_bridge
         ])
         .run(tauri::generate_context!())
         .expect("failed to run LensBridge Desktop");

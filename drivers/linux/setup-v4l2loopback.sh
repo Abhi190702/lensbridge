@@ -31,4 +31,4 @@ fi
 echo "Virtual camera device list:"
 v4l2-ctl --list-devices || true
 echo
-echo "V1 does not pipe frames into this device yet. FFmpeg/GStreamer output is the V2 target."
+echo "LensBridge does not pipe frames into this Linux device yet. FFmpeg/GStreamer output is future work."

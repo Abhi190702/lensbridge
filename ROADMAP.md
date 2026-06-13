@@ -14,12 +14,17 @@ Status:
 - Desktop preview architecture.
 - Shared protocol types.
 
-## V2 — OBS Output + Reliability
+## V2 — Windows Camera Bridge + OBS Fallback
 
-Goal: make the current phone-to-desktop stream reliably usable through OBS Virtual Camera without claiming a native camera device.
+Goal: make the phone-to-desktop stream usable as `LensBridge Camera` on Windows, while keeping OBS Output Mode stable as
+a fallback.
 
 Implemented/current:
 
+- Experimental Windows DirectShow output through UnityCapture.
+- Tauri/Rust UnityCapture shared-memory publisher.
+- Windows driver install/uninstall scripts.
+- Standalone Chrome camera test page.
 - Capture-safe OBS Output Mode.
 - Honest OBS Virtual Camera guide for Windows/macOS.
 - Reconnect hardening.
@@ -27,12 +32,13 @@ Implemented/current:
 
 Planned:
 
+- Native receiver path that avoids WebView canvas/base64 frame transport.
 - Linux v4l2loopback pipeline.
 - FFmpeg/GStreamer frame bridge.
 
 ## V3 — Universal Source Expansion
 
-Goal: bridge more than phones and research native virtual camera paths.
+Goal: bridge more than phones and harden native virtual camera performance.
 
 Planned:
 
@@ -42,7 +48,7 @@ Planned:
 - Screen capture source.
 - Raspberry Pi camera source.
 - Device/source manager UI.
-- Native Windows DirectShow and macOS CoreMediaIO research, without claiming support before it works.
+- Windows Media Foundation and macOS CoreMediaIO research, without claiming support before it works.
 
 ## V4 — AI + Plugin System
 
@@ -59,7 +65,7 @@ Planned:
 
 ## Intentionally Not Claimed Yet
 
-- Native Windows DirectShow driver.
+- Production-signed Windows Media Foundation camera.
 - Native macOS CoreMediaIO driver.
 - Bluetooth video transport.
 - TURN/cloud relay.

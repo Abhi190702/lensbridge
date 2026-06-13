@@ -34,6 +34,7 @@
     "targets": "all",
     "category": "Utility",
     "shortDescription": "Bridge camera sources into desktop apps.",
-    "longDescription": "LensBridge is a local-first universal camera bridge."
+    "longDescription": "LensBridge is a local-first universal camera bridge.",
+    "icon": ["icons/icon.ico"]
   }
 }

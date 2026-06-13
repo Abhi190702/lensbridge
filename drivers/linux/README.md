@@ -1,5 +1,5 @@
 # Linux Virtual Camera
 
-Linux support uses `v4l2loopback`.
+Linux support will use `v4l2loopback`.
 
-V1 status: setup scripts and docs only. Sending LensBridge frames into the loopback device is V2 work.
+Current status: setup scripts and docs only. Sending LensBridge frames into the loopback device is future work.

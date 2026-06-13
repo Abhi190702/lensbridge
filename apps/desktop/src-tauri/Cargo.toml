@@ -16,6 +16,7 @@ local-ip-address = "0.6"
 rand = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+base64 = "0.22"
 tauri = { version = "=2.2.0", features = [] }
 tauri-runtime = "=2.3.0"
 tauri-runtime-wry = "=2.3.0"
@@ -23,3 +24,12 @@ tauri-utils = "=2.4.0"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
 tower-http = { version = "0.6", features = ["cors"] }
 time = "=0.3.36"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Memory",
+    "Win32_System_Threading"
+] }

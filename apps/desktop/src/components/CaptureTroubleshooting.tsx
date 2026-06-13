@@ -17,11 +17,11 @@ const items = [
       "Missing window checklist:\n1. Open LensBridge OBS Output.\n2. Keep it unminimized.\n3. Reopen OBS Window Capture properties.\n4. Select LensBridge OBS Output."
   },
   {
-    title: "Browser does not show OBS Virtual Camera",
-    cause: "LensBridge is not a native camera device. Chrome will only show OBS after OBS Virtual Camera is started.",
-    fix: "Click Start Virtual Camera in OBS, refresh or restart Chrome, then choose OBS Virtual Camera in the camera picker.",
+    title: "Browser does not show LensBridge Camera",
+    cause: "The Windows DirectShow driver is not installed yet, or Chrome cached its camera list before installation.",
+    fix: "Run the Windows driver installer as Administrator, restart Chrome, then choose LensBridge Camera in the camera picker.",
     checklist:
-      "Camera picker checklist:\n1. In OBS, click Start Virtual Camera.\n2. Close and reopen the Chrome tab.\n3. If missing, restart Chrome fully.\n4. Select OBS Virtual Camera.\n5. Do not look for LensBridge in Chrome."
+      "Camera picker checklist:\n1. Run pnpm install:windows-camera as Administrator.\n2. Restart Chrome fully.\n3. Start LensBridge and connect your phone.\n4. Select LensBridge Camera.\n5. Keep the camera preview open for a few seconds."
   },
   {
     title: "Preview is mirrored",

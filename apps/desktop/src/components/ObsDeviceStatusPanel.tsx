@@ -29,10 +29,10 @@ export function ObsDeviceStatusPanel() {
             <Camera className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Chrome camera detection</h3>
+            <h3 className="text-lg font-semibold text-white">OBS fallback detection</h3>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
-              Chrome will show <span className="text-slate-200">OBS Virtual Camera</span>, not LensBridge. If this says
-              OBS is missing, start OBS Virtual Camera and restart Chrome.
+              Use this only for the OBS fallback path. For the direct Windows path, Chrome should show{" "}
+              <span className="text-slate-200">LensBridge Camera</span> after installing the driver.
             </p>
           </div>
         </div>

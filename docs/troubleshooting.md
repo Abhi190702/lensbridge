@@ -13,10 +13,21 @@ Most mobile browsers require HTTPS for camera access. Use a secure dev setup or 
 
 ## Virtual Camera Not Visible
 
-V1 does not provide native virtual camera output. LensBridge will not appear as `LensBridge Camera` in Chrome, Zoom, or
-Discord.
+On Windows V2, Chrome should show `LensBridge Camera` after the driver is installed.
 
-Use OBS:
+Fix:
+
+1. Open PowerShell as Administrator.
+2. Run `pnpm install:windows-camera`.
+3. Restart Chrome fully.
+4. Start LensBridge Desktop and connect your phone.
+5. Open the target app's camera picker.
+6. Select **LensBridge Camera**.
+7. Keep the preview open for a few seconds while the shared-memory bridge starts.
+
+Use `TEST-CAMERAS.html` to verify Chrome can see the device without OBS.
+
+OBS fallback:
 
 1. Connect your phone.
 2. Click **Open OBS Output**.
@@ -25,8 +36,6 @@ Use OBS:
 5. Click **Start Virtual Camera** in OBS.
 6. Refresh or restart Chrome.
 7. Select **OBS Virtual Camera** in the browser/app.
-
-Chrome will not show **LensBridge** because LensBridge does not install a native camera driver today.
 
 ## OBS Shows Black Screen
 

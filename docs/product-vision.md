@@ -1,6 +1,6 @@
 # Product Vision
 
-LensBridge starts as a phone-to-OBS-webcam workflow and grows into a universal camera bridge.
+LensBridge starts as a phone-to-webcam workflow and grows into a universal camera bridge.
 
 Principles:
 
@@ -12,5 +12,5 @@ Principles:
 - Honest feature delivery.
 - Contributor-friendly architecture.
 
-Current truth: LensBridge creates the live source. OBS Virtual Camera exposes that source to browser and meeting apps.
-Native virtual camera devices are roadmap work.
+Current truth: LensBridge V2 includes an experimental Windows DirectShow device named `LensBridge Camera`. OBS Virtual
+Camera is still available as a fallback. macOS/Linux native outputs and a zero-copy native receiver remain roadmap work.

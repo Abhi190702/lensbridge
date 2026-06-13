@@ -11,11 +11,13 @@ import { AppShell, type PageId } from "./components/AppShell";
 import { ObsOutputWindow } from "./components/ObsOutputWindow";
 import { useDesktopReceiver } from "./hooks/useDesktopEvents";
 import { usePairing } from "./hooks/usePairing";
+import { useUnityCaptureBridge } from "./hooks/useUnityCaptureBridge";
 import { OBS_OUTPUT_TITLE } from "./lib/obsWorkflow";
 
 export default function App() {
   const pairing = usePairing();
   const receiver = useDesktopReceiver(pairing.session);
+  const directCamera = useUnityCaptureBridge(receiver.remoteStream, false);
   const [page, setPage] = useState<PageId>("dashboard");
   const [obsOutputOpen, setObsOutputOpen] = useState(false);
 
@@ -56,12 +58,13 @@ export default function App() {
       <Dashboard
         pairing={pairing}
         receiver={receiver}
+        directCamera={directCamera}
         onOpenObsOutput={() => setObsOutputOpen(true)}
         onOpenGuide={() => setPage("virtualCamera")}
       />
     ),
     sources: <Sources />,
-    virtualCamera: <VirtualCamera />,
+    virtualCamera: <VirtualCamera directCamera={directCamera} />,
     security: <Security session={pairing.session} />,
     settings: <Settings />,
     about: <About />

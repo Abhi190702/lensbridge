@@ -13,7 +13,7 @@ visual center. Decorative gradients, glass panels, and nested cards should be ra
 
 ## Typography
 
-- Prefer direct headings: "Open OBS Output", "Phone connected", "Waiting for phone".
+- Prefer direct headings: "LensBridge Camera", "Phone connected", "Waiting for phone".
 - Avoid marketing phrasing inside operational UI.
 - Keep helper copy short and actionable.
 
@@ -37,6 +37,8 @@ visual center. Decorative gradients, glass panels, and nested cards should be ra
 - Waiting for phone.
 - Phone connected.
 - Preview active.
+- Direct camera waiting for target app.
+- Direct camera streaming.
 - OBS output ready.
 - OBS output open.
 - Stream disconnected.
@@ -48,7 +50,7 @@ Use short utility motion only. OBS controls may auto-hide after inactivity. Avoi
 
 ## Anti-Patterns
 
-- Claiming native virtual camera support before a driver exists.
+- Claiming production-grade native virtual camera support before the driver path is signed and hardened.
 - Capturing the normal dashboard in OBS.
 - Showing QR cards, sidebars, metrics, or status bars in capture mode.
 - Using fake data in production states.

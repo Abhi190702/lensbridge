@@ -18,7 +18,9 @@
     "build:phone": "pnpm --filter @lensbridge/phone build",
     "build:desktop": "pnpm --filter @lensbridge/desktop build",
     "check:rust": "cd apps/desktop/src-tauri && cargo check",
-    "test:rust": "cd apps/desktop/src-tauri && cargo test"
+    "test:rust": "cd apps/desktop/src-tauri && cargo test",
+    "install:windows-camera": "powershell -ExecutionPolicy Bypass -File drivers/windows/Install-LensBridgeCamera.ps1",
+    "uninstall:windows-camera": "powershell -ExecutionPolicy Bypass -File drivers/windows/Uninstall-LensBridgeCamera.ps1"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

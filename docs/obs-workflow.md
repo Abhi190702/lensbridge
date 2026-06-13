@@ -1,6 +1,8 @@
-# OBS Workflow
+# OBS Fallback Workflow
 
-Use this workflow when you want LensBridge to appear in browser or meeting-app camera pickers.
+On Windows, try `LensBridge Camera` first after installing the DirectShow driver with `pnpm install:windows-camera`.
+
+Use this OBS workflow when the DirectShow path is not installed or a target app refuses virtual DirectShow devices.
 
 ```text
 Phone -> LensBridge Desktop -> LensBridge OBS Output -> OBS Window Capture -> OBS Virtual Camera -> browser/app
@@ -46,5 +48,5 @@ Controls auto-hide after two seconds. Press `Esc` to leave OBS Output Mode.
 
 ## Important
 
-LensBridge is the live source. OBS exposes that source as a system webcam. LensBridge does not currently install a native
-camera device.
+LensBridge is the live source. OBS exposes that source as a system webcam. On Windows V2, the direct `LensBridge Camera`
+driver is preferred when installed.

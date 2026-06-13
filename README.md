@@ -2,9 +2,9 @@
 
 **Bridge any camera source into any app.**
 
-LensBridge is an open-source, local-first universal camera bridge. V1 turns a phone camera into a low-latency desktop video source through QR pairing, a local signaling server, WebRTC preview, and a capture-safe OBS output mode. Later versions expand the same architecture to native virtual camera drivers, other computers, IP cameras, OBS ingest, screen capture, and community source plugins.
+LensBridge is an open-source, local-first universal camera bridge. It turns a phone camera into a low-latency desktop video source through QR pairing, a local signaling server, WebRTC preview, and Windows DirectShow output through `LensBridge Camera`. OBS Output Mode remains available as a fallback.
 
-> Current status: **V1 MVP in progress**. Phone camera streaming to desktop preview is implemented as the first real path. Virtual camera output, native Windows/macOS drivers, AI filters, Bluetooth pairing, RTSP ingest, and plugin runtime loading are documented or scaffolded, not claimed as complete.
+> Current status: **V2 Windows bridge in progress**. Phone camera streaming to desktop preview is implemented. Windows DirectShow output is implemented with UnityCapture and a throttled WebView-to-Rust frame pump. macOS native output, AI filters, Bluetooth pairing, RTSP ingest, and plugin runtime loading are documented or scaffolded, not claimed as complete.
 
 ## Why It Exists
 
@@ -25,7 +25,8 @@ Many laptops ship with weak or missing webcams, while phones already have excell
 - Local WebSocket signaling server scaffold in Rust.
 - QR payload generation with fallback manual pairing details.
 - Desktop WebRTC receiver architecture for in-app stream preview.
-- OBS Output Mode for clean Window Capture with no sidebar, QR card, status bar, or app chrome.
+- Windows `LensBridge Camera` DirectShow output through the bundled UnityCapture filter.
+- OBS Output Mode fallback for clean Window Capture with no sidebar, QR card, status bar, or app chrome.
 - Shared TypeScript protocol and validation helpers.
 - Honest virtual camera docs and Linux v4l2loopback scripts for V2 work.
 - Source, transport, media, virtual camera, audio, AI, and plugin scaffolds.
@@ -39,11 +40,12 @@ flowchart LR
   phone --> media["Encrypted WebRTC media<br/>LAN / Wi-Fi"]
   media --> desktop
   desktop --> preview["Desktop preview"]
-  desktop --> obs["LensBridge OBS Output<br/>clean capture surface"]
-  obs --> virtual["OBS Virtual Camera<br/>selectable in browser/apps"]
+  desktop --> direct["LensBridge Camera<br/>DirectShow + UnityCapture"]
+  direct --> apps["Chrome / OBS / Zoom / apps"]
+  desktop --> obs["OBS fallback<br/>clean capture surface"]
 ```
 
-V1 keeps media handling in browser/WebView WebRTC APIs because that is the most practical path for a Tauri MVP. Rust owns pairing, local sessions, native capability checks, and the signaling server.
+LensBridge currently keeps WebRTC receiving in browser/WebView APIs. Rust owns pairing, local sessions, native capability checks, signaling, and the Windows UnityCapture shared-memory publisher.
 
 ## Quick Start
 
@@ -96,12 +98,10 @@ Rust check:
 pnpm check:rust
 ```
 
-Linux v4l2loopback setup for future native pipeline research:
+Windows DirectShow camera install:
 
-```bash
-cd drivers/linux
-chmod +x setup-v4l2loopback.sh
-./setup-v4l2loopback.sh
+```powershell
+pnpm install:windows-camera
 ```
 
 ## Phone Usage
@@ -113,41 +113,40 @@ chmod +x setup-v4l2loopback.sh
 5. Tap **Start stream**.
 6. Desktop should show the phone camera preview when signaling and WebRTC negotiation complete.
 
-## Use LensBridge As A Webcam Today With OBS
+## Use LensBridge As A Webcam On Windows
 
-Current supported flow:
+Primary Windows flow:
+
+```text
+Phone -> LensBridge Desktop -> LensBridge Camera -> browser/app
+```
+
+Steps:
+
+1. Run PowerShell as Administrator.
+2. Run `pnpm install:windows-camera`.
+3. Restart Chrome or your meeting app.
+4. Start LensBridge Desktop.
+5. Connect your phone.
+6. Choose **LensBridge Camera** in the target app.
+
+Use `TEST-CAMERAS.html` to verify Chrome can see and open the camera without OBS.
+
+OBS fallback:
 
 ```text
 Phone -> LensBridge Desktop -> LensBridge OBS Output -> OBS Window Capture -> OBS Virtual Camera -> browser/app
 ```
 
-Why OBS is needed: Chrome, Zoom, Discord, Meet, and similar apps only see cameras registered by the operating system.
-LensBridge currently creates the live local source. OBS Virtual Camera exposes that source as a selectable system camera.
-
-Steps:
-
-1. Connect your phone in LensBridge.
-2. Click **Open OBS Output** in the desktop dashboard.
-3. Open OBS Studio.
-4. Add **Source -> Window Capture**.
-5. Select **LensBridge OBS Output**.
-   If OBS says **LensBridge Desktop**, go back and click **Open OBS Output** first.
-6. If the OBS preview is black, try capture methods in this order: Windows Graphics Capture, Windows 10 1903 and up, then BitBlt.
-7. Right-click the OBS source and choose **Transform -> Fit to Screen**.
-8. Click **Start Virtual Camera** in OBS.
-9. Refresh or restart Chrome.
-10. In your browser or meeting app, choose **OBS Virtual Camera**.
-
-Chrome will not show **LensBridge** until a native camera driver exists. Today it should show **OBS Virtual Camera** after
-OBS starts its virtual camera.
+Use OBS fallback if the DirectShow driver is not installed or the target app refuses virtual DirectShow devices.
 
 ## Virtual Camera Status
 
-V1 does **not** claim a native virtual camera driver. Desktop preview and OBS Output Mode are the shipped workflows.
+Windows V2 ships an experimental DirectShow camera bridge named `LensBridge Camera`.
 
-- Windows/macOS today: OBS Output Mode plus OBS Virtual Camera.
+- Windows today: `LensBridge Camera` DirectShow output, with OBS Output Mode as fallback.
 - Linux native path: planned `v4l2loopback` plus FFmpeg/GStreamer pipeline.
-- Native Windows DirectShow and macOS CoreMediaIO drivers are future roadmap items.
+- macOS CoreMediaIO output is a future roadmap item.
 
 ## Repository Layout
 
@@ -178,8 +177,8 @@ Read [docs/security.md](docs/security.md) for the threat model.
 ## Roadmap
 
 - **V1:** phone-to-desktop WebRTC preview.
-- **V2:** OBS Output Mode and reliability.
-- **V3:** universal source expansion and native virtual camera research.
+- **V2:** Windows DirectShow camera bridge and OBS fallback reliability.
+- **V3:** universal source expansion and native receiver performance work.
 - **V4:** local AI processing and plugin runtime.
 
 See [ROADMAP.md](ROADMAP.md).

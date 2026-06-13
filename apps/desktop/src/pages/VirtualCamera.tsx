@@ -1,16 +1,21 @@
 import { VirtualCameraPanel } from "../components/VirtualCameraPanel";
+import type { DirectCameraBridgeState } from "../hooks/useUnityCaptureBridge";
 
-export function VirtualCamera() {
+interface VirtualCameraProps {
+  directCamera: DirectCameraBridgeState;
+}
+
+export function VirtualCamera({ directCamera }: VirtualCameraProps) {
   return (
     <div className="grid gap-5">
       <div>
         <h2 className="text-2xl font-semibold text-white">Virtual Camera</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-          Current Windows/macOS workflow: LensBridge creates a clean OBS output surface, and OBS Virtual Camera exposes
-          it to browser and meeting apps. Native OS camera drivers are roadmap work, not shipped support.
+          Windows V2 uses a DirectShow device named LensBridge Camera. OBS Output Mode remains as a fallback for systems
+          where the DirectShow driver is not installed or a target app refuses virtual DirectShow devices.
         </p>
       </div>
-      <VirtualCameraPanel />
+      <VirtualCameraPanel directCamera={directCamera} />
     </div>
   );
 }

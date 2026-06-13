@@ -3,7 +3,10 @@ use crate::{
     pairing::qr_payload::PairingPayload,
     sources::source_manager::SourceManager,
     state::{AppState, RuntimeStatus},
-    virtual_cam::manager::{ObsVirtualCameraStatus, VirtualCameraManager, VirtualCameraStatus},
+    virtual_cam::{
+        manager::{ObsVirtualCameraStatus, VirtualCameraManager, VirtualCameraStatus},
+        unity_capture::{UnityCaptureFramePayload, UnityCapturePublishResult},
+    },
 };
 
 #[tauri::command]
@@ -40,4 +43,16 @@ pub fn get_virtual_camera_status() -> LensBridgeResult<VirtualCameraStatus> {
 #[tauri::command]
 pub fn get_obs_virtual_camera_status() -> LensBridgeResult<ObsVirtualCameraStatus> {
     Ok(VirtualCameraManager::default().obs_virtual_camera_status())
+}
+
+#[tauri::command]
+pub fn publish_unity_capture_frame(
+    frame: UnityCaptureFramePayload,
+) -> LensBridgeResult<UnityCapturePublishResult> {
+    crate::virtual_cam::unity_capture::publish_unity_capture_frame(frame)
+}
+
+#[tauri::command]
+pub fn reset_unity_capture_bridge() -> LensBridgeResult<()> {
+    crate::virtual_cam::unity_capture::reset_unity_capture_bridge()
 }

@@ -30,10 +30,22 @@ impl Default for VirtualCameraManager {
 impl VirtualCameraManager {
     pub fn status(&self) -> VirtualCameraStatus {
         VirtualCameraStatus {
-            output_name: "OBS Virtual Camera".into(),
+            output_name: if cfg!(target_os = "windows") {
+                "LensBridge Camera".into()
+            } else {
+                "OBS Virtual Camera".into()
+            },
             platform: std::env::consts::OS.into(),
-            status: VirtualDeviceStatus::PreviewOnly,
-            message: "LensBridge provides the live source. OBS Virtual Camera exposes it as a system camera.".into(),
+            status: if cfg!(target_os = "windows") {
+                VirtualDeviceStatus::Available
+            } else {
+                VirtualDeviceStatus::PreviewOnly
+            },
+            message: if cfg!(target_os = "windows") {
+                "LensBridge can publish frames to the UnityCapture DirectShow driver when LensBridge Camera is installed and opened by a target app.".into()
+            } else {
+                "LensBridge provides the live source. OBS Virtual Camera exposes it as a system camera fallback.".into()
+            },
         }
     }
 

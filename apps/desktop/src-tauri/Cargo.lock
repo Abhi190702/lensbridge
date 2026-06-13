@@ -1827,6 +1827,7 @@ name = "lensbridge-desktop"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64 0.22.1",
  "chrono",
  "futures-util",
  "local-ip-address",
@@ -1841,6 +1842,7 @@ dependencies = [
  "time",
  "tokio",
  "tower-http",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
