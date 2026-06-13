@@ -1,4 +1,5 @@
-import type { ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { About } from "./pages/About";
 import { Dashboard } from "./pages/Dashboard";
 import { Security } from "./pages/Security";
@@ -6,14 +7,42 @@ import { Settings } from "./pages/Settings";
 import { Sources } from "./pages/Sources";
 import { VirtualCamera } from "./pages/VirtualCamera";
 import { AppShell, type PageId } from "./components/AppShell";
+import { ObsOutputWindow } from "./components/ObsOutputWindow";
 import { useDesktopReceiver } from "./hooks/useDesktopEvents";
 import { usePairing } from "./hooks/usePairing";
+import { OBS_OUTPUT_TITLE } from "./lib/obsWorkflow";
 
 export default function App() {
   const pairing = usePairing();
   const receiver = useDesktopReceiver(pairing.session);
+  const [page, setPage] = useState<PageId>("dashboard");
+  const [obsOutputOpen, setObsOutputOpen] = useState(false);
+
+  useEffect(() => {
+    const title = obsOutputOpen ? OBS_OUTPUT_TITLE : "LensBridge Desktop";
+    document.title = title;
+    try {
+      void getCurrentWindow()
+        .setTitle(title)
+        .catch(() => undefined);
+    } catch {
+      // Browser-only dev preview does not expose Tauri window metadata.
+    }
+  }, [obsOutputOpen]);
+
+  if (obsOutputOpen) {
+    return <ObsOutputWindow stream={receiver.remoteStream} onExit={() => setObsOutputOpen(false)} />;
+  }
+
   const pages: Record<PageId, ReactElement> = {
-    dashboard: <Dashboard pairing={pairing} receiver={receiver} />,
+    dashboard: (
+      <Dashboard
+        pairing={pairing}
+        receiver={receiver}
+        onOpenObsOutput={() => setObsOutputOpen(true)}
+        onOpenGuide={() => setPage("virtualCamera")}
+      />
+    ),
     sources: <Sources />,
     virtualCamera: <VirtualCamera />,
     security: <Security session={pairing.session} />,
@@ -22,7 +51,7 @@ export default function App() {
   };
 
   return (
-    <AppShell status={receiver.status} metrics={receiver.metrics}>
+    <AppShell page={page} onNavigate={setPage} status={receiver.status} metrics={receiver.metrics}>
       {(page) => pages[page]}
     </AppShell>
   );

@@ -2,7 +2,7 @@
 
 **Bridge any camera source into any app.**
 
-LensBridge is an open-source, local-first universal camera bridge. V1 turns a phone camera into a low-latency desktop video source through QR pairing, a local signaling server, and WebRTC preview. Later versions expand the same architecture to virtual camera output, other computers, IP cameras, OBS, screen capture, and community source plugins.
+LensBridge is an open-source, local-first universal camera bridge. V1 turns a phone camera into a low-latency desktop video source through QR pairing, a local signaling server, WebRTC preview, and a capture-safe OBS output mode. Later versions expand the same architecture to native virtual camera drivers, other computers, IP cameras, OBS ingest, screen capture, and community source plugins.
 
 > Current status: **V1 MVP in progress**. Phone camera streaming to desktop preview is implemented as the first real path. Virtual camera output, native Windows/macOS drivers, AI filters, Bluetooth pairing, RTSP ingest, and plugin runtime loading are documented or scaffolded, not claimed as complete.
 
@@ -25,6 +25,7 @@ Many laptops ship with weak or missing webcams, while phones already have excell
 - Local WebSocket signaling server scaffold in Rust.
 - QR payload generation with fallback manual pairing details.
 - Desktop WebRTC receiver architecture for in-app stream preview.
+- OBS Output Mode for clean Window Capture with no sidebar, QR card, status bar, or app chrome.
 - Shared TypeScript protocol and validation helpers.
 - Honest virtual camera docs and Linux v4l2loopback scripts for V2 work.
 - Source, transport, media, virtual camera, audio, AI, and plugin scaffolds.
@@ -38,7 +39,8 @@ flowchart LR
   phone --> media["Encrypted WebRTC media<br/>LAN / Wi-Fi"]
   media --> desktop
   desktop --> preview["Desktop preview"]
-  preview -. "V2" .-> vcam["LensBridge Cam<br/>v4l2loopback / OBS fallback"]
+  desktop --> obs["LensBridge OBS Output<br/>clean capture surface"]
+  obs --> virtual["OBS Virtual Camera<br/>selectable in browser/apps"]
 ```
 
 V1 keeps media handling in browser/WebView WebRTC APIs because that is the most practical path for a Tauri MVP. Rust owns pairing, local sessions, native capability checks, and the signaling server.
@@ -94,7 +96,7 @@ Rust check:
 pnpm check:rust
 ```
 
-Linux v4l2loopback setup for the V2 virtual camera path:
+Linux v4l2loopback setup for future native pipeline research:
 
 ```bash
 cd drivers/linux
@@ -111,12 +113,35 @@ chmod +x setup-v4l2loopback.sh
 5. Tap **Start stream**.
 6. Desktop should show the phone camera preview when signaling and WebRTC negotiation complete.
 
+## Use LensBridge As A Webcam Today With OBS
+
+Current supported flow:
+
+```text
+Phone -> LensBridge Desktop -> LensBridge OBS Output -> OBS Window Capture -> OBS Virtual Camera -> browser/app
+```
+
+Why OBS is needed: Chrome, Zoom, Discord, Meet, and similar apps only see cameras registered by the operating system.
+LensBridge currently creates the live local source. OBS Virtual Camera exposes that source as a selectable system camera.
+
+Steps:
+
+1. Connect your phone in LensBridge.
+2. Click **Open OBS Output** in the desktop dashboard.
+3. Open OBS Studio.
+4. Add **Source -> Window Capture**.
+5. Select **LensBridge OBS Output**.
+6. If the OBS preview is black, try capture methods in this order: Windows Graphics Capture, Windows 10 1903 and up, then BitBlt.
+7. Right-click the OBS source and choose **Transform -> Fit to Screen**.
+8. Click **Start Virtual Camera** in OBS.
+9. In your browser or meeting app, choose **OBS Virtual Camera**.
+
 ## Virtual Camera Status
 
-V1 does **not** claim a production virtual camera driver. Desktop preview is the first shipped workflow.
+V1 does **not** claim a native virtual camera driver. Desktop preview and OBS Output Mode are the shipped workflows.
 
-- Linux V2 path: `v4l2loopback` plus FFmpeg/GStreamer pipeline.
-- Windows/macOS V2 fallback: OBS Virtual Camera guide.
+- Windows/macOS today: OBS Output Mode plus OBS Virtual Camera.
+- Linux native path: planned `v4l2loopback` plus FFmpeg/GStreamer pipeline.
 - Native Windows DirectShow and macOS CoreMediaIO drivers are future roadmap items.
 
 ## Repository Layout
@@ -148,8 +173,8 @@ Read [docs/security.md](docs/security.md) for the threat model.
 ## Roadmap
 
 - **V1:** phone-to-desktop WebRTC preview.
-- **V2:** virtual camera output and reliability.
-- **V3:** universal source expansion.
+- **V2:** OBS Output Mode and reliability.
+- **V3:** universal source expansion and native virtual camera research.
 - **V4:** local AI processing and plugin runtime.
 
 See [ROADMAP.md](ROADMAP.md).

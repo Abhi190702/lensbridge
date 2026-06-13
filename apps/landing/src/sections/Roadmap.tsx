@@ -1,4 +1,4 @@
-const roadmap = ["V1 phone preview", "V2 virtual camera", "V3 universal sources", "V4 local AI + plugins"];
+const roadmap = ["V1 phone preview", "V2 OBS reliability", "V3 universal sources", "V4 local AI + plugins"];
 
 export function Roadmap() {
   return (

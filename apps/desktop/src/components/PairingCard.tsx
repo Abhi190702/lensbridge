@@ -14,7 +14,14 @@ interface PairingCardProps {
   onRegenerate: () => void;
 }
 
-export function PairingCard({ session, qrDataUrl, phoneUrl, expiresInSeconds, loading, onRegenerate }: PairingCardProps) {
+export function PairingCard({
+  session,
+  qrDataUrl,
+  phoneUrl,
+  expiresInSeconds,
+  loading,
+  onRegenerate
+}: PairingCardProps) {
   async function copyLink() {
     if (phoneUrl) await navigator.clipboard.writeText(phoneUrl);
   }
@@ -24,10 +31,11 @@ export function PairingCard({ session, qrDataUrl, phoneUrl, expiresInSeconds, lo
       <QRPairingPanel qrDataUrl={qrDataUrl} loading={loading} />
       <div className="flex flex-col justify-center">
         <p className="text-sm font-medium text-brand">Phone-to-desktop V1</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">Scan once. Stream instantly.</h2>
+        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">Connect your phone. Send it to OBS.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
           Open LensBridge on your phone and scan this QR code to turn your camera into a desktop source. Your camera
-          stream stays on your local network.
+          stream stays on your local network. Once connected, LensBridge can switch into a clean capture surface for OBS
+          Window Capture.
         </p>
 
         <div className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">

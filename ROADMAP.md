@@ -14,21 +14,25 @@ Status:
 - Desktop preview architecture.
 - Shared protocol types.
 
-## V2 — Virtual Camera + Reliability
+## V2 — OBS Output + Reliability
 
-Goal: make LensBridge appear as `LensBridge Cam` in video apps.
+Goal: make the current phone-to-desktop stream reliably usable through OBS Virtual Camera without claiming a native camera device.
+
+Implemented/current:
+
+- Capture-safe OBS Output Mode.
+- Honest OBS Virtual Camera guide for Windows/macOS.
+- Reconnect hardening.
+- Better metrics and diagnostics.
 
 Planned:
 
 - Linux v4l2loopback pipeline.
 - FFmpeg/GStreamer frame bridge.
-- OBS Virtual Camera fallback guide for Windows/macOS.
-- Reconnect hardening.
-- Better metrics and diagnostics.
 
 ## V3 — Universal Source Expansion
 
-Goal: bridge more than phones.
+Goal: bridge more than phones and research native virtual camera paths.
 
 Planned:
 
@@ -38,6 +42,7 @@ Planned:
 - Screen capture source.
 - Raspberry Pi camera source.
 - Device/source manager UI.
+- Native Windows DirectShow and macOS CoreMediaIO research, without claiming support before it works.
 
 ## V4 — AI + Plugin System
 
