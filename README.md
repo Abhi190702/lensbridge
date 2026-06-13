@@ -131,10 +131,15 @@ Steps:
 3. Open OBS Studio.
 4. Add **Source -> Window Capture**.
 5. Select **LensBridge OBS Output**.
+   If OBS says **LensBridge Desktop**, go back and click **Open OBS Output** first.
 6. If the OBS preview is black, try capture methods in this order: Windows Graphics Capture, Windows 10 1903 and up, then BitBlt.
 7. Right-click the OBS source and choose **Transform -> Fit to Screen**.
 8. Click **Start Virtual Camera** in OBS.
-9. In your browser or meeting app, choose **OBS Virtual Camera**.
+9. Refresh or restart Chrome.
+10. In your browser or meeting app, choose **OBS Virtual Camera**.
+
+Chrome will not show **LensBridge** until a native camera driver exists. Today it should show **OBS Virtual Camera** after
+OBS starts its virtual camera.
 
 ## Virtual Camera Status
 

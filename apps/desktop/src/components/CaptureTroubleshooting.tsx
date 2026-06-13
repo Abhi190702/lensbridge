@@ -3,10 +3,11 @@ import { Copy } from "lucide-react";
 const items = [
   {
     title: "OBS shows black screen",
-    cause: "Window Capture can miss WebView2 GPU surfaces on some Windows setups.",
-    fix: "Restart LensBridge, reopen OBS source properties, then try Windows Graphics Capture, Windows 10 1903 and up, then BitBlt.",
+    cause:
+      "Most often OBS is capturing LensBridge Desktop instead of LensBridge OBS Output, or Window Capture is missing WebView2 video content.",
+    fix: "Click Open OBS Output first, select LensBridge OBS Output in OBS, then try Windows Graphics Capture, Windows 10 1903 and up, then BitBlt.",
     checklist:
-      "Black screen checklist:\n1. Restart LensBridge Desktop.\n2. Select LensBridge OBS Output in OBS.\n3. Try Windows Graphics Capture.\n4. Try Windows 10 1903 and up.\n5. Try BitBlt.\n6. Use Display Capture and crop if all methods fail."
+      "Black screen checklist:\n1. In LensBridge, click Open OBS Output.\n2. Confirm the window title says LensBridge OBS Output.\n3. In OBS, select LensBridge OBS Output, not LensBridge Desktop.\n4. Try Windows Graphics Capture.\n5. Try Windows 10 1903 and up.\n6. Try BitBlt.\n7. Use Display Capture and crop if all methods fail."
   },
   {
     title: "OBS does not list LensBridge",
@@ -17,10 +18,10 @@ const items = [
   },
   {
     title: "Browser does not show OBS Virtual Camera",
-    cause: "LensBridge is not a native camera device. OBS must expose it.",
-    fix: "Click Start Virtual Camera in OBS, then choose OBS Virtual Camera in the browser/app camera picker.",
+    cause: "LensBridge is not a native camera device. Chrome will only show OBS after OBS Virtual Camera is started.",
+    fix: "Click Start Virtual Camera in OBS, refresh or restart Chrome, then choose OBS Virtual Camera in the camera picker.",
     checklist:
-      "Camera picker checklist:\n1. Start OBS Virtual Camera.\n2. Refresh the browser tab.\n3. Select OBS Virtual Camera.\n4. Reopen the browser if needed."
+      "Camera picker checklist:\n1. In OBS, click Start Virtual Camera.\n2. Close and reopen the Chrome tab.\n3. If missing, restart Chrome fully.\n4. Select OBS Virtual Camera.\n5. Do not look for LensBridge in Chrome."
   },
   {
     title: "Preview is mirrored",

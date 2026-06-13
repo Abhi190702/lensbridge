@@ -16,9 +16,11 @@ Phone -> LensBridge Desktop -> LensBridge OBS Output -> OBS Window Capture -> OB
 6. Open OBS Studio.
 7. Add **Source -> Window Capture**.
 8. Select **LensBridge OBS Output**.
+   If the dropdown says **LensBridge Desktop**, go back to LensBridge and click **Open OBS Output** first.
 9. Right-click the OBS source and choose **Transform -> Fit to Screen**.
 10. Click **Start Virtual Camera** in OBS.
-11. Select **OBS Virtual Camera** in your browser, Zoom, Discord, Meet, or other app.
+11. Refresh or restart Chrome.
+12. Select **OBS Virtual Camera** in your browser, Zoom, Discord, Meet, or other app.
 
 ## Capture Method Order
 

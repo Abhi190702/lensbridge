@@ -23,19 +23,25 @@ Use OBS:
 3. Add OBS **Window Capture**.
 4. Select **LensBridge OBS Output**.
 5. Click **Start Virtual Camera** in OBS.
-6. Select **OBS Virtual Camera** in the browser/app.
+6. Refresh or restart Chrome.
+7. Select **OBS Virtual Camera** in the browser/app.
+
+Chrome will not show **LensBridge** because LensBridge does not install a native camera driver today.
 
 ## OBS Shows Black Screen
 
-Cause: Window Capture can miss WebView2 content on some Windows setups.
+Cause: OBS is usually capturing **LensBridge Desktop** instead of **LensBridge OBS Output**, or Window Capture is missing
+WebView2 content on your Windows setup.
 
 Fix:
 
 1. Restart LensBridge Desktop.
 2. Click **Open OBS Output**.
-3. Reopen OBS Window Capture properties.
-4. Try capture methods in this order: Windows Graphics Capture, Windows 10 1903 and up, then BitBlt.
-5. If all methods are black, use Display Capture and crop to the LensBridge output.
+3. Confirm the window title says **LensBridge OBS Output**.
+4. Reopen OBS Window Capture properties.
+5. Select **LensBridge OBS Output**, not **LensBridge Desktop**.
+6. Try capture methods in this order: Windows Graphics Capture, Windows 10 1903 and up, then BitBlt.
+7. If all methods are black, use Display Capture and crop to the LensBridge output.
 
 ## OBS Captures Sidebar Or QR Code
 

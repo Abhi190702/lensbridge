@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactElement } from "react";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { About } from "./pages/About";
 import { Dashboard } from "./pages/Dashboard";
@@ -21,10 +22,26 @@ export default function App() {
   useEffect(() => {
     const title = obsOutputOpen ? OBS_OUTPUT_TITLE : "LensBridge Desktop";
     document.title = title;
+
+    async function applyWindowMode() {
+      const appWindow = getCurrentWindow();
+      await appWindow.setTitle(title);
+
+      if (obsOutputOpen) {
+        await appWindow.setAlwaysOnTop(true);
+        await appWindow.setMinSize(new LogicalSize(960, 540));
+        await appWindow.setSize(new LogicalSize(1280, 720));
+        await appWindow.center();
+        await appWindow.setFocus();
+        return;
+      }
+
+      await appWindow.setAlwaysOnTop(false);
+      await appWindow.setMinSize(new LogicalSize(960, 640));
+    }
+
     try {
-      void getCurrentWindow()
-        .setTitle(title)
-        .catch(() => undefined);
+      void applyWindowMode().catch(() => undefined);
     } catch {
       // Browser-only dev preview does not expose Tauri window metadata.
     }

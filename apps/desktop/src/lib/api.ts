@@ -7,6 +7,12 @@ interface RuntimeStatus {
   desktopName: string;
 }
 
+export interface ObsVirtualCameraStatus {
+  detected: boolean;
+  devices: string[];
+  message: string;
+}
+
 function isTauriRuntime() {
   return "__TAURI_INTERNALS__" in window;
 }
@@ -40,6 +46,18 @@ export async function disconnectSession(): Promise<void> {
   if (isTauriRuntime()) {
     await invoke("disconnect_session");
   }
+}
+
+export async function getObsVirtualCameraStatus(): Promise<ObsVirtualCameraStatus> {
+  if (isTauriRuntime()) {
+    return invoke<ObsVirtualCameraStatus>("get_obs_virtual_camera_status");
+  }
+
+  return {
+    detected: false,
+    devices: [],
+    message: "Camera-device detection is available in the Tauri desktop app."
+  };
 }
 
 function createBrowserMockSession(): PairingPayload {

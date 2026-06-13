@@ -1,6 +1,7 @@
 import { MonitorCog } from "lucide-react";
 import { OBS_SETUP_STEPS } from "../lib/obsWorkflow";
 import { CaptureTroubleshooting } from "./CaptureTroubleshooting";
+import { ObsDeviceStatusPanel } from "./ObsDeviceStatusPanel";
 import { ObsSetupWizard } from "./ObsSetupWizard";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
@@ -50,6 +51,7 @@ export function VirtualCameraPanel() {
           </div>
         </div>
       </Card>
+      <ObsDeviceStatusPanel />
       <ObsSetupWizard />
       <CaptureTroubleshooting />
     </div>

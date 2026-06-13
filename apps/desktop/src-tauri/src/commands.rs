@@ -3,7 +3,7 @@ use crate::{
     pairing::qr_payload::PairingPayload,
     sources::source_manager::SourceManager,
     state::{AppState, RuntimeStatus},
-    virtual_cam::manager::{VirtualCameraManager, VirtualCameraStatus},
+    virtual_cam::manager::{ObsVirtualCameraStatus, VirtualCameraManager, VirtualCameraStatus},
 };
 
 #[tauri::command]
@@ -35,4 +35,9 @@ pub fn list_source_statuses() -> LensBridgeResult<Vec<crate::sources::source_tra
 #[tauri::command]
 pub fn get_virtual_camera_status() -> LensBridgeResult<VirtualCameraStatus> {
     Ok(VirtualCameraManager::default().status())
+}
+
+#[tauri::command]
+pub fn get_obs_virtual_camera_status() -> LensBridgeResult<ObsVirtualCameraStatus> {
+    Ok(VirtualCameraManager::default().obs_virtual_camera_status())
 }

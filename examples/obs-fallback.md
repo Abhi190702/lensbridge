@@ -6,9 +6,11 @@ Use OBS Virtual Camera when an app needs LensBridge to appear in a normal camera
 2. Click Open OBS Output.
 3. Open OBS Studio.
 4. Add a Window Capture source and select LensBridge OBS Output.
+   If OBS says LensBridge Desktop, go back and click Open OBS Output first.
 5. Right-click the source and choose Transform -> Fit to Screen.
 6. Click Start Virtual Camera.
-7. Select OBS Virtual Camera in Chrome, Zoom, Discord, Meet, or another browser app.
+7. Refresh or restart Chrome.
+8. Select OBS Virtual Camera in Chrome, Zoom, Discord, Meet, or another browser app.
 
 If the output is reversed in the browser preview, toggle Mirror in LensBridge OBS Output before OBS captures it.
 

@@ -16,7 +16,8 @@ Use this path today:
 3. Open OBS Studio.
 4. Add a Window Capture source for LensBridge OBS Output.
 5. Click Start Virtual Camera in OBS.
-6. Select OBS Virtual Camera in Chrome, Zoom, Discord, Meet, or another app.
+6. Refresh or restart Chrome.
+7. Select OBS Virtual Camera in Chrome, Zoom, Discord, Meet, or another app.
 
 If the browser preview feels reversed, toggle Mirror in OBS Output Mode before OBS captures it.
 
@@ -27,6 +28,8 @@ If LensBridge is missing from OBS Window Capture:
 3. Reopen the OBS Window Capture source properties.
 4. Pick `[lensbridge-desktop.exe]: LensBridge OBS Output`.
 5. If it still does not appear, restart OBS or use Display Capture and crop to the LensBridge preview.
+
+If OBS shows `[lensbridge-desktop.exe]: LensBridge Desktop`, you have not entered OBS Output Mode yet.
 
 If OBS shows LensBridge but the preview is black:
 
