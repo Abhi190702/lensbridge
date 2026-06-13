@@ -198,20 +198,23 @@ mod windows_bridge {
 
     impl UnityCaptureNames {
         fn first_device_candidates() -> Vec<Self> {
-            vec![
-                Self::new(
-                    "UnityCapture_Mutx",
-                    "UnityCapture_Want",
-                    "UnityCapture_Sent",
-                    "UnityCapture_Data",
-                ),
-                Self::new(
-                    "UnityCapture_Mutx0",
-                    "UnityCapture_Want0",
-                    "UnityCapture_Sent0",
-                    "UnityCapture_Data0",
-                ),
-            ]
+            let mut candidates = vec![Self::new(
+                "UnityCapture_Mutx",
+                "UnityCapture_Want",
+                "UnityCapture_Sent",
+                "UnityCapture_Data",
+            )];
+
+            for slot in '0'..='9' {
+                candidates.push(Self::new(
+                    &format!("UnityCapture_Mutx{slot}"),
+                    &format!("UnityCapture_Want{slot}"),
+                    &format!("UnityCapture_Sent{slot}"),
+                    &format!("UnityCapture_Data{slot}"),
+                ));
+            }
+
+            candidates
         }
 
         fn new(mutex: &str, want: &str, sent: &str, data: &str) -> Self {

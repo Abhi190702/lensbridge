@@ -139,6 +139,10 @@
         Use this page after installing the Windows driver. Start LensBridge Desktop, connect your phone, then select
         <strong>LensBridge Camera</strong> below.
       </p>
+      <p>
+        If Chrome shows a camera permission popup, click <strong>Allow this time</strong>, then click
+        <strong>Scan cameras</strong> again. Device names stay hidden until permission is granted.
+      </p>
 
       <div class="layout">
         <section class="panel">
@@ -174,7 +178,7 @@
           const permissionStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
           permissionStream.getTracks().forEach((track) => track.stop());
         } catch (error) {
-          setStatus("Camera permission was not granted: " + error.message, "warn");
+          setStatus("Camera permission is still pending. Click Allow this time in Chrome, then scan again.", "warn");
         }
 
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -200,8 +204,10 @@
 
         if (lensBridge) {
           setStatus("LensBridge Camera detected. Select it and click Start selected camera.", "ok");
+        } else if (cameras.length && cameras.every((camera) => !camera.label)) {
+          setStatus("Chrome is hiding camera names. Click Allow this time in the permission popup, then scan again.", "warn");
         } else if (cameras.length) {
-          setStatus("LensBridge Camera was not found. Install the driver, restart Chrome, then scan again.", "warn");
+          setStatus("LensBridge Camera was not found. Restart Chrome, keep LensBridge Desktop open, then scan again.", "warn");
         } else {
           setStatus("No cameras were found.", "error");
         }
