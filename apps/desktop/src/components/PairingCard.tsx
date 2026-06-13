@@ -27,23 +27,22 @@ export function PairingCard({
   }
 
   return (
-    <Card className="grid gap-6 p-6 lg:grid-cols-[20rem_1fr]">
+    <Card className="grid gap-5 p-5 lg:grid-cols-[18rem_1fr]">
       <QRPairingPanel qrDataUrl={qrDataUrl} loading={loading} />
       <div className="flex flex-col justify-center">
-        <p className="text-sm font-medium text-brand">Phone-to-desktop V1</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">Connect your phone. Send it to OBS.</h2>
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand">Pair phone</p>
+        <h2 className="mt-2 text-2xl font-semibold text-white">Scan once. Use the phone as LensBridge Camera.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-          Open LensBridge on your phone and scan this QR code to turn your camera into a desktop source. Your camera
-          stream stays on your local network. Once connected, LensBridge can switch into a clean capture surface for OBS
-          Window Capture.
+          Open the phone page, scan this code, and allow camera access. The stream stays on your local network; once it
+          is live, Windows apps can open LensBridge Camera.
         </p>
 
-        <div className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
-          <div className="rounded-lg border border-line bg-white/[0.03] p-3">
+        <div className="mt-5 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
+          <div className="border border-line bg-white/[0.025] p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Desktop</div>
             <div className="mt-1 font-medium text-white">{session?.desktopName ?? "Detecting"}</div>
           </div>
-          <div className="rounded-lg border border-line bg-white/[0.03] p-3">
+          <div className="border border-line bg-white/[0.025] p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Session expires</div>
             <div className="mt-1 font-medium text-white">{formatTimeLeft(expiresInSeconds)}</div>
           </div>
@@ -61,7 +60,7 @@ export function PairingCard({
         </div>
 
         {phoneUrl ? (
-          <p className="mt-4 break-all rounded-lg border border-line bg-black/20 p-3 font-mono text-xs text-slate-400">
+          <p className="mt-4 break-all border border-line bg-black/20 p-3 font-mono text-xs text-slate-400">
             {phoneUrl}
           </p>
         ) : null}

@@ -25,11 +25,11 @@ export function Dashboard({ pairing, receiver, directCamera, onOpenObsOutput, on
   const streamReady = Boolean(receiver.remoteStream);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-4">
       {pairing.error ? <ErrorState message={pairing.error} onRetry={pairing.refresh} /> : null}
       {receiver.error ? <ErrorState message={receiver.error} /> : null}
       {streamReady ? (
-        <>
+        <div className="grid gap-3">
           <ConnectedSourceCard status={receiver.status} streamReady={streamReady} />
           <PrimaryActionBar
             streamReady={streamReady}
@@ -37,7 +37,7 @@ export function Dashboard({ pairing, receiver, directCamera, onOpenObsOutput, on
             onOpenGuide={onOpenGuide}
             onDisconnect={receiver.disconnect}
           />
-        </>
+        </div>
       ) : (
         <PairingCard
           session={pairing.session}
@@ -48,14 +48,14 @@ export function Dashboard({ pairing, receiver, directCamera, onOpenObsOutput, on
           onRegenerate={pairing.regenerate}
         />
       )}
-      <div className="grid gap-5 xl:grid-cols-[1fr_24rem]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <SourcePreview
           stream={receiver.remoteStream}
           metrics={receiver.metrics}
           mirrored={mirrorPreview}
           onToggleMirror={() => setMirrorPreview((value) => !value)}
         />
-        <div className="grid gap-5">
+        <div className="grid content-start gap-4">
           <DirectCameraBridgePanel bridge={directCamera} compact />
           <OutputModeSelector streamReady={streamReady} onOpenObsOutput={onOpenObsOutput} />
           {streamReady ? <StreamHealthCard metrics={receiver.metrics} /> : null}

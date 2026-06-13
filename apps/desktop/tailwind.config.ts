@@ -5,14 +5,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: "#0c111d",
-        panel: "#111827",
-        line: "rgba(148, 163, 184, 0.18)",
-        brand: "#8fd8ff",
-        accent: "#9bffd2"
+        ink: "#0a0f18",
+        panel: "#101722",
+        line: "rgba(148, 163, 184, 0.16)",
+        brand: "#7dd3fc",
+        accent: "#6ee7b7"
       },
       boxShadow: {
-        panel: "0 24px 80px rgba(0, 0, 0, 0.25)"
+        panel: "0 16px 48px rgba(0, 0, 0, 0.22)"
       }
     }
   },

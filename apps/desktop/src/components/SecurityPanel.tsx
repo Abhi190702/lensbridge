@@ -11,7 +11,7 @@ export function SecurityPanel({ session }: SecurityPanelProps) {
   return (
     <Card className="p-5">
       <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
+        <div className="flex h-8 w-8 items-center justify-center border border-line text-accent">
           <ShieldCheck className="h-5 w-5" />
         </div>
         <div>
@@ -31,7 +31,7 @@ export function SecurityPanel({ session }: SecurityPanelProps) {
 
 function SecurityRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-line bg-white/[0.03] p-3">
+    <div className="rounded-md border border-line bg-white/[0.025] p-3">
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
       <div className="mt-1 text-sm font-medium text-white">{value}</div>
     </div>

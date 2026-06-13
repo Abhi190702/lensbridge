@@ -8,10 +8,10 @@ interface OutputModeSelectorProps {
 
 export function OutputModeSelector({ streamReady, onOpenObsOutput }: OutputModeSelectorProps) {
   return (
-    <div className="rounded-xl border border-line bg-panel/70 p-4">
+    <div className="border border-line bg-panel p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand">OBS fallback</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">OBS fallback</p>
           <h3 className="mt-1 text-lg font-semibold text-white">Capture-safe surface</h3>
           <p className="mt-1 max-w-xl text-sm leading-6 text-slate-400">
             Use this only when you need OBS. The direct LensBridge Camera path is the primary Windows output.

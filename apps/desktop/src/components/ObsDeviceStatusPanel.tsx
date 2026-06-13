@@ -22,10 +22,10 @@ export function ObsDeviceStatusPanel() {
   }, []);
 
   return (
-    <Card className="p-5">
+    <Card className="p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-line text-brand">
             <Camera className="h-5 w-5" />
           </div>
           <div>
@@ -42,7 +42,7 @@ export function ObsDeviceStatusPanel() {
         </Button>
       </div>
 
-      <div className="mt-4 rounded-lg border border-line bg-black/20 p-4">
+      <div className="mt-4 border border-line bg-black/20 p-4">
         <div
           className={status?.detected ? "text-sm font-semibold text-accent" : "text-sm font-semibold text-amber-100"}
         >
@@ -60,7 +60,7 @@ export function ObsDeviceStatusPanel() {
             <div className="text-xs uppercase tracking-wide text-slate-500">Windows camera devices</div>
             <ul className="mt-2 grid gap-1 text-sm text-slate-300">
               {status.devices.map((device) => (
-                <li key={device} className="rounded-md bg-white/[0.03] px-2 py-1">
+                <li key={device} className="border border-white/[0.04] bg-white/[0.025] px-2 py-1">
                   {device}
                 </li>
               ))}

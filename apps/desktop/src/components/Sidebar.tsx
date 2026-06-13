@@ -18,18 +18,18 @@ interface SidebarProps {
 
 export function Sidebar({ active, onNavigate }: SidebarProps) {
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-ink/85 px-4 py-5 backdrop-blur">
-      <div className="mb-8 flex items-center gap-3 px-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand/40 bg-brand/10 text-brand">
-          <Camera className="h-5 w-5" />
+    <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-[#080d15] px-3 py-4">
+      <div className="mb-7 px-2">
+        <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-white">
+          <Camera className="h-4 w-4 text-brand" />
+          LensBridge
         </div>
         <div>
-          <div className="text-sm font-semibold tracking-wide text-white">LensBridge</div>
-          <div className="text-xs text-slate-400">Desktop v0.1</div>
+          <div className="mt-1 text-xs text-slate-500">Direct camera bridge</div>
         </div>
       </div>
 
-      <nav className="space-y-1">
+      <nav className="space-y-0.5">
         {navItems.map((item) => {
           const Icon = item.icon;
           const selected = active === item.id;
@@ -37,13 +37,12 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
             <button
               key={item.id}
               className={[
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition",
-                selected
-                  ? "bg-white text-ink"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white"
+                "relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition",
+                selected ? "bg-white/[0.08] text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-100"
               ].join(" ")}
               onClick={() => onNavigate(item.id)}
             >
+              {selected ? <span className="absolute left-0 h-5 w-0.5 bg-brand" /> : null}
               <Icon className="h-4 w-4" />
               {item.label}
             </button>
@@ -51,8 +50,8 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
         })}
       </nav>
 
-      <div className="mt-auto rounded-lg border border-line bg-white/[0.03] p-3 text-xs leading-5 text-slate-400">
-        Local-first. No accounts, no telemetry, no cloud relay by default.
+      <div className="mt-auto border-t border-line px-2 pt-3 text-xs leading-5 text-slate-500">
+        Local stream. No account. No relay unless you add one.
       </div>
     </aside>
   );

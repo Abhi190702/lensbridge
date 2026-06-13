@@ -1,5 +1,4 @@
 import type { StreamMetrics } from "@lensbridge/shared";
-import { Activity } from "lucide-react";
 import { formatMetric } from "../lib/format";
 
 interface StreamHealthCardProps {
@@ -8,11 +7,8 @@ interface StreamHealthCardProps {
 
 export function StreamHealthCard({ metrics }: StreamHealthCardProps) {
   return (
-    <div className="rounded-xl border border-line bg-panel/70 p-4 text-sm text-slate-300">
-      <div className="mb-3 flex items-center gap-2 font-semibold text-white">
-        <Activity className="h-4 w-4 text-brand" />
-        Stream health
-      </div>
+    <div className="border border-line bg-panel p-4 text-sm text-slate-300">
+      <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Stream health</div>
       <div className="grid grid-cols-3 gap-3">
         <Metric label="FPS" value={formatMetric(metrics.fps)} />
         <Metric

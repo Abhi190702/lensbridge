@@ -23,7 +23,7 @@ export function SourceGrid() {
         return (
           <Card key={source.id} className="p-4">
             <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <div className="flex h-8 w-8 items-center justify-center border border-line text-brand">
                 <Icon className="h-5 w-5" />
               </div>
               <Badge tone={source.status === "available" ? "success" : "neutral"}>{source.status}</Badge>

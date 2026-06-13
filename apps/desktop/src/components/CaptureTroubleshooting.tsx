@@ -50,17 +50,17 @@ export function CaptureTroubleshooting() {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {items.map((item) => (
-        <article key={item.title} className="rounded-xl border border-line bg-panel/70 p-4">
+        <article key={item.title} className="rounded-lg border border-line bg-panel p-4">
           <h4 className="font-semibold text-white">{item.title}</h4>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            <span className="text-slate-300">Cause:</span> {item.cause}
+            <span className="text-slate-300">Likely:</span> {item.cause}
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            <span className="text-slate-300">Fix:</span> {item.fix}
+            <span className="text-slate-300">Do this:</span> {item.fix}
           </p>
           <button
             type="button"
-            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium text-slate-200 hover:border-brand/60 hover:text-white"
+            className="mt-3 inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-medium text-slate-200 hover:border-brand/60 hover:text-white"
             onClick={() => void navigator.clipboard.writeText(item.checklist)}
           >
             <Copy className="h-4 w-4" />

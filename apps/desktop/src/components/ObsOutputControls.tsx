@@ -31,7 +31,7 @@ export function ObsOutputControls({
   onExit
 }: ObsOutputControlsProps) {
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-4 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-xl border border-white/10 bg-neutral-950/90 px-3 py-2 text-sm text-white shadow-2xl">
+    <div className="pointer-events-auto absolute left-1/2 top-4 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-lg border border-white/10 bg-neutral-950/90 px-3 py-2 text-sm text-white shadow-2xl">
       <SegmentedButton active={fitMode === "fit"} onClick={() => onFitModeChange("fit")}>
         Fit
       </SegmentedButton>
@@ -46,7 +46,7 @@ export function ObsOutputControls({
         {rotation}deg
       </button>
       <select
-        className="h-9 rounded-lg border border-white/10 bg-neutral-900 px-2 text-sm text-white outline-none"
+        className="h-9 rounded-md border border-white/10 bg-neutral-900 px-2 text-sm text-white outline-none"
         value={backgroundMode}
         onChange={(event) => onBackgroundModeChange(event.target.value as ObsBackgroundMode)}
         aria-label="OBS output background"

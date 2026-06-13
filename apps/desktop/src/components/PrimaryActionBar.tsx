@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardList, Power, RadioTower } from "lucide-react";
+import { BookOpen, ClipboardList, MonitorUp, Power } from "lucide-react";
 import { OBS_SETUP_STEPS } from "../lib/obsWorkflow";
 import { Button } from "./ui/Button";
 
@@ -11,18 +11,18 @@ interface PrimaryActionBarProps {
 
 export function PrimaryActionBar({ streamReady, onOpenObsOutput, onOpenGuide, onDisconnect }: PrimaryActionBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-panel/70 p-3">
+    <div className="flex flex-wrap items-center gap-2 border border-line bg-panel p-2">
       <Button onClick={onOpenObsOutput} disabled={!streamReady}>
-        <RadioTower className="h-4 w-4" />
-        Open OBS Output
+        <MonitorUp className="h-4 w-4" />
+        OBS fallback view
       </Button>
-      <Button variant="secondary" onClick={() => void navigator.clipboard.writeText(OBS_SETUP_STEPS)}>
-        <ClipboardList className="h-4 w-4" />
-        Copy OBS Setup Steps
-      </Button>
-      <Button variant="ghost" onClick={onOpenGuide}>
+      <Button variant="secondary" onClick={onOpenGuide}>
         <BookOpen className="h-4 w-4" />
-        Open Virtual Camera Guide
+        Output setup
+      </Button>
+      <Button variant="ghost" onClick={() => void navigator.clipboard.writeText(OBS_SETUP_STEPS)}>
+        <ClipboardList className="h-4 w-4" />
+        Copy OBS steps
       </Button>
       <Button variant="ghost" onClick={onDisconnect} disabled={!streamReady}>
         <Power className="h-4 w-4" />
