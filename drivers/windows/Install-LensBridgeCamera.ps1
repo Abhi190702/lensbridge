@@ -16,8 +16,7 @@ function Assert-Administrator {
 function Invoke-RegSvr32 {
     param(
         [string]$RegSvr32,
-        [string]$DllPath,
-        [string]$Name
+        [string]$DllPath
     )
 
     if (-not (Test-Path -LiteralPath $DllPath)) {
@@ -26,8 +25,9 @@ function Invoke-RegSvr32 {
 
     Unblock-DriverDll -DllPath $DllPath
 
-    $nameArg = "/i:UnityCaptureName=$Name"
-    $process = Start-Process -FilePath $RegSvr32 -ArgumentList @("/s", $nameArg, "`"$DllPath`"") -Wait -PassThru -WindowStyle Hidden
+    # UnityCapture's upstream installer registers the filter without a DllInstall payload.
+    # The LensBridge friendly name is applied afterward by updating the registered filter names.
+    $process = Start-Process -FilePath $RegSvr32 -ArgumentList @("/s", "`"$DllPath`"") -Wait -PassThru -WindowStyle Hidden
     if ($process.ExitCode -ne 0) {
         $message = @(
             "regsvr32 failed for $DllPath with exit code $($process.ExitCode).",
@@ -119,11 +119,11 @@ $dll64 = Join-Path $resolvedDriverPath "UnityCaptureFilter64.dll"
 $dll32 = Join-Path $resolvedDriverPath "UnityCaptureFilter32.dll"
 
 Write-Host "Registering 64-bit DirectShow filter as '$CameraName'..."
-Invoke-RegSvr32 -RegSvr32 "$env:SystemRoot\System32\regsvr32.exe" -DllPath $dll64 -Name $CameraName
+Invoke-RegSvr32 -RegSvr32 "$env:SystemRoot\System32\regsvr32.exe" -DllPath $dll64
 
 if ([Environment]::Is64BitOperatingSystem -and (Test-Path -LiteralPath $dll32)) {
     Write-Host "Registering 32-bit DirectShow filter for legacy apps..."
-    Invoke-RegSvr32 -RegSvr32 "$env:SystemRoot\SysWOW64\regsvr32.exe" -DllPath $dll32 -Name $CameraName
+    Invoke-RegSvr32 -RegSvr32 "$env:SystemRoot\SysWOW64\regsvr32.exe" -DllPath $dll32
 }
 
 Set-FilterNames -Name $CameraName

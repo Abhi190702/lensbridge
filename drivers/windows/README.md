@@ -21,9 +21,10 @@ pnpm install:windows-camera
 
 Then restart Chrome or any app that had its camera picker open.
 
-The installer automatically removes Windows downloaded-file blocks from the bundled DLLs before registration. If
-`regsvr32` still fails, install the Microsoft Visual C++ 2015-2022 Redistributable for both x64 and x86, make sure this
-repo is fully synced locally in OneDrive, and run the command again from an Administrator PowerShell window.
+The installer automatically removes Windows downloaded-file blocks from the bundled DLLs before registration. It
+registers the UnityCapture filters with plain `regsvr32`, then renames the registered DirectShow entries to
+`LensBridge Camera`. If `regsvr32` still fails, make sure this repo is fully synced locally in OneDrive and run the
+command again from an Administrator PowerShell window.
 
 ## Test
 
