@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { publishUnityCaptureFrame, resetUnityCaptureBridge } from "../lib/api";
 
 const TARGET_WIDTH = 960;
-const TARGET_HEIGHT = 720;
+const TARGET_HEIGHT = 540;
 const TARGET_FPS = 30;
 const ACTIVE_INTERVAL_MS = 1000 / TARGET_FPS;
 const WAITING_INTERVAL_MS = 1000;
@@ -39,6 +39,7 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
   useEffect(() => {
     let disposed = false;
     let timer: number | null = null;
+    let videoFrameCallback: number | null = null;
     let inFlight = false;
 
     if (!stream) {
@@ -56,7 +57,11 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
     const canvas = document.createElement("canvas");
     canvas.width = TARGET_WIDTH;
     canvas.height = TARGET_HEIGHT;
-    const context = canvas.getContext("2d", { alpha: true, willReadFrequently: true });
+    const context = canvas.getContext("2d", {
+      alpha: false,
+      desynchronized: true,
+      willReadFrequently: true
+    });
 
     if (!context) {
       setState((current) => ({
@@ -75,6 +80,7 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
 
     async function pumpFrame() {
       if (disposed || inFlight) return;
+      const pumpStartedAt = performance.now();
       if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
         schedule(WAITING_INTERVAL_MS);
         return;
@@ -117,7 +123,7 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
               skippedFrame: result.skippedFrame
             });
           }
-          schedule(ACTIVE_INTERVAL_MS);
+          schedule(nextActiveDelay(pumpStartedAt, result.skippedFrame));
           return;
         }
 
@@ -148,7 +154,23 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
     function schedule(delayMs: number) {
       if (disposed) return;
       if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => void pumpFrame(), delayMs);
+      if (videoFrameCallback !== null && "cancelVideoFrameCallback" in video) {
+        video.cancelVideoFrameCallback(videoFrameCallback);
+        videoFrameCallback = null;
+      }
+
+      timer = window.setTimeout(() => {
+        timer = null;
+        if ("requestVideoFrameCallback" in video) {
+          videoFrameCallback = video.requestVideoFrameCallback(() => {
+            videoFrameCallback = null;
+            void pumpFrame();
+          });
+          return;
+        }
+
+        void pumpFrame();
+      }, delayMs);
     }
 
     void video.play().catch(() => undefined);
@@ -162,6 +184,9 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
     return () => {
       disposed = true;
       if (timer) window.clearTimeout(timer);
+      if (videoFrameCallback !== null && "cancelVideoFrameCallback" in video) {
+        video.cancelVideoFrameCallback(videoFrameCallback);
+      }
       video.pause();
       video.srcObject = null;
       void resetUnityCaptureBridge();
@@ -169,6 +194,12 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
   }, [stream, mirror]);
 
   return useMemo(() => state, [state]);
+}
+
+function nextActiveDelay(pumpStartedAt: number, receiverSkippedFrame: boolean) {
+  const elapsedMs = performance.now() - pumpStartedAt;
+  const targetInterval = receiverSkippedFrame ? ACTIVE_INTERVAL_MS * 1.2 : ACTIVE_INTERVAL_MS;
+  return Math.max(0, targetInterval - elapsedMs);
 }
 
 function drawDirectShowFrame(
