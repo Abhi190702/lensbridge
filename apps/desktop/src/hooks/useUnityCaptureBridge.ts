@@ -103,9 +103,9 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
     function scheduleCapture() {
       if (disposed) return;
       if ("requestVideoFrameCallback" in video) {
-        captureVideoFrameCallback = video.requestVideoFrameCallback((_now) => {
+        captureVideoFrameCallback = video.requestVideoFrameCallback((now) => {
           captureVideoFrameCallback = null;
-          captureLatestFrame();
+          captureLatestFrame(now);
           scheduleCapture();
         });
         return;

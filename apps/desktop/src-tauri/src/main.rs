@@ -22,7 +22,7 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[cfg(target_os = "windows")]
 const WEBVIEW_BROWSER_ARGS: &str =
-    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu --disable-gpu-compositing";
+    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 
 fn main() {
     tauri::Builder::default()

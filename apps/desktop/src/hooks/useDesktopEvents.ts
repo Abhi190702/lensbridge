@@ -35,6 +35,12 @@ export function useDesktopReceiver(session: PairingPayload | null) {
       }
     };
 
+    const closePeer = () => {
+      peerRef.current?.close();
+      peerRef.current = null;
+      setRemoteStream(null);
+    };
+
     const ensurePeer = () => {
       if (peerRef.current) return peerRef.current;
       const peer = new RTCPeerConnection({ iceServers: [] });
@@ -103,6 +109,7 @@ export function useDesktopReceiver(session: PairingPayload | null) {
           }
           if (message.type === "offer") {
             setStatus("connecting");
+            closePeer();
             const peer = ensurePeer();
             await peer.setRemoteDescription(message.sdp);
             const answer = await peer.createAnswer();
@@ -117,8 +124,8 @@ export function useDesktopReceiver(session: PairingPayload | null) {
             setMetrics((current) => ({ ...current, ...message.metrics }));
           }
           if (message.type === "stream-stopped" || message.type === "disconnect") {
+            closePeer();
             setStatus("disconnected");
-            setRemoteStream(null);
           }
           if (message.type === "error") {
             setError(message.message);
@@ -161,11 +168,9 @@ export function useDesktopReceiver(session: PairingPayload | null) {
     return () => {
       disposed = true;
       if (retryTimer) window.clearTimeout(retryTimer);
-      peerRef.current?.close();
-      peerRef.current = null;
+      closePeer();
       socketRef.current?.close();
       socketRef.current = null;
-      setRemoteStream(null);
     };
   }, [session]);
 

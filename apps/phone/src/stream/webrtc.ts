@@ -6,7 +6,7 @@ import {
   type StreamMetrics
 } from "@lensbridge/shared";
 import { SignalingClient } from "./signalingClient";
-import { readOutboundMetrics } from "./metrics";
+import { readOutboundMetrics, type OutboundMetricsSample } from "./metrics";
 
 export interface PhonePeer {
   stop: () => void;
@@ -18,6 +18,7 @@ export interface StartPhonePeerOptions {
   quality: QualityProfileId;
   onStatus: (status: string) => void;
   onMetrics: (metrics: Partial<StreamMetrics>) => void;
+  onRemoteDisconnect?: () => void;
 }
 
 export async function startPhonePeer({
@@ -25,11 +26,14 @@ export async function startPhonePeer({
   stream,
   quality,
   onStatus,
-  onMetrics
+  onMetrics,
+  onRemoteDisconnect
 }: StartPhonePeerOptions): Promise<PhonePeer> {
   const client = new SignalingClient(pairing, "phone");
   const peer = new RTCPeerConnection({ iceServers: [] });
   let metricsTimer = 0;
+  let lastMetricsSample: OutboundMetricsSample | null = null;
+  let stopped = false;
 
   for (const track of stream.getTracks()) {
     if (track.kind === "video") {
@@ -52,6 +56,8 @@ export async function startPhonePeer({
   };
 
   client.onMessage(async (message: SignalingMessage) => {
+    if (stopped) return;
+
     if (message.type === "answer") {
       await peer.setRemoteDescription(message.sdp);
       onStatus("connected");
@@ -60,6 +66,8 @@ export async function startPhonePeer({
       await peer.addIceCandidate(message.candidate);
     }
     if (message.type === "disconnect") {
+      stopPeer(false);
+      onRemoteDisconnect?.();
       onStatus("disconnected");
     }
   });
@@ -71,17 +79,30 @@ export async function startPhonePeer({
   client.send({ type: "stream-started", sessionId: pairing.sessionId });
 
   metricsTimer = window.setInterval(async () => {
-    const metrics = await readOutboundMetrics(peer);
+    if (stopped) return;
+    const { metrics, sample } = await readOutboundMetrics(peer, lastMetricsSample);
+    lastMetricsSample = sample;
     onMetrics(metrics);
     client.send({ type: "metrics", sessionId: pairing.sessionId, metrics });
   }, 1500);
 
+  function stopPeer(notifyDesktop: boolean) {
+    if (stopped) return;
+
+    stopped = true;
+    window.clearInterval(metricsTimer);
+
+    if (notifyDesktop) {
+      client.send({ type: "stream-stopped", sessionId: pairing.sessionId, reason: "Phone stopped stream" });
+    }
+
+    peer.close();
+    client.close();
+  }
+
   return {
     stop() {
-      window.clearInterval(metricsTimer);
-      client.send({ type: "stream-stopped", sessionId: pairing.sessionId, reason: "Phone stopped stream" });
-      peer.close();
-      client.close();
+      stopPeer(true);
     }
   };
 }
