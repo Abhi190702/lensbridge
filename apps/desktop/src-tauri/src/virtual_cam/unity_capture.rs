@@ -86,7 +86,7 @@ mod windows_bridge {
     const FRAME_TIMEOUT_MS: i32 = 1000;
     const MAX_SHARED_IMAGE_SIZE: usize = 3840 * 2160 * 4 * 2;
 
-    static SENDER: OnceLock<Mutex<Option<UnityCaptureSender>>> = OnceLock::new();
+    static BRIDGE: OnceLock<Mutex<UnityCaptureBridge>> = OnceLock::new();
 
     pub fn publish(
         payload: UnityCaptureFramePayload,
@@ -127,48 +127,32 @@ mod windows_bridge {
             .with_detail(format!("expected {expected_len} bytes, got {}", rgba.len())));
         }
 
-        let bridge = SENDER.get_or_init(|| Mutex::new(None));
-        let mut sender = bridge.lock().map_err(|_| {
+        let bridge = BRIDGE.get_or_init(|| Mutex::new(UnityCaptureBridge::default()));
+        let mut bridge = bridge.lock().map_err(|_| {
             LensBridgeError::new(
                 "virtual_cam_bridge_locked",
                 "UnityCapture bridge is busy. Try again in a moment.",
             )
         })?;
 
-        if sender.is_none() {
-            *sender = UnityCaptureSender::open_first().ok();
-        }
-
-        let Some(active_sender) = sender.as_mut() else {
-            return Ok(waiting_result(
-                payload.width,
-                payload.height,
-                "Waiting for LensBridge Camera to be opened by Chrome, OBS, Zoom, or another camera app.",
-            ));
-        };
-
-        match active_sender.send(payload.width, payload.height, payload.mirror, &rgba) {
+        match bridge.publish(payload.width, payload.height, payload.mirror, &rgba) {
             Ok(result) => Ok(result),
-            Err(UnityCaptureSendError::NotReady(message)) => {
-                *sender = None;
-                Ok(waiting_result(payload.width, payload.height, message))
-            }
             Err(UnityCaptureSendError::TooLarge(message)) => Err(LensBridgeError::new(
                 "virtual_cam_frame_too_large",
                 "Frame is larger than UnityCapture can accept.",
             )
             .with_detail(message)),
-            Err(UnityCaptureSendError::Windows(message)) => {
-                *sender = None;
+            Err(UnityCaptureSendError::NotReady(message))
+            | Err(UnityCaptureSendError::Windows(message)) => {
                 Ok(waiting_result(payload.width, payload.height, message))
             }
         }
     }
 
     pub fn reset() {
-        if let Some(bridge) = SENDER.get() {
-            if let Ok(mut sender) = bridge.lock() {
-                *sender = None;
+        if let Some(bridge) = BRIDGE.get() {
+            if let Ok(mut bridge) = bridge.lock() {
+                bridge.reset();
             }
         }
     }
@@ -189,7 +173,97 @@ mod windows_bridge {
         }
     }
 
+    struct UnityCaptureBridge {
+        senders: Vec<UnityCaptureSender>,
+    }
+
+    impl Default for UnityCaptureBridge {
+        fn default() -> Self {
+            Self {
+                senders: UnityCaptureNames::first_device_candidates()
+                    .into_iter()
+                    .map(UnityCaptureSender::new)
+                    .collect(),
+            }
+        }
+    }
+
+    impl UnityCaptureBridge {
+        fn publish(
+            &mut self,
+            width: u32,
+            height: u32,
+            mirror: bool,
+            rgba: &[u8],
+        ) -> Result<UnityCapturePublishResult, UnityCaptureSendError> {
+            let mut delivered_count = 0usize;
+            let mut frames_delivered = 0u64;
+            let mut skipped_frame = false;
+            let mut delivered_labels = Vec::new();
+            let mut last_waiting_message = None;
+
+            for sender in &mut self.senders {
+                let had_partial_state = sender.has_partial_state();
+                match sender.send(width, height, mirror, rgba) {
+                    Ok(result) => {
+                        delivered_count += 1;
+                        frames_delivered = frames_delivered.max(result.frames_delivered);
+                        skipped_frame |= result.skipped_frame;
+                        delivered_labels.push(sender.label().to_string());
+                    }
+                    Err(UnityCaptureSendError::TooLarge(message)) => {
+                        return Err(UnityCaptureSendError::TooLarge(message));
+                    }
+                    Err(UnityCaptureSendError::NotReady(message))
+                    | Err(UnityCaptureSendError::Windows(message)) => {
+                        if sender.has_partial_state() || had_partial_state {
+                            last_waiting_message = Some(format!("{}: {message}", sender.label()));
+                        }
+                    }
+                }
+            }
+
+            if delivered_count == 0 {
+                return Ok(waiting_result(
+                    width,
+                    height,
+                    last_waiting_message.unwrap_or_else(|| {
+                        "LensBridge Camera is open, but its shared-memory receiver is not ready yet. Keep the camera preview open for a few seconds.".into()
+                    }),
+                ));
+            }
+
+            let receiver_label = match delivered_labels.as_slice() {
+                [label] => label.clone(),
+                labels => format!("{} receiver slots", labels.len()),
+            };
+
+            Ok(UnityCapturePublishResult {
+                ready: true,
+                delivered: true,
+                skipped_frame,
+                frames_delivered,
+                width,
+                height,
+                message: if skipped_frame {
+                    format!(
+                        "Frame delivered to LensBridge Camera ({receiver_label}). The receiver is naturally throttling some frames."
+                    )
+                } else {
+                    format!("Frame delivered to LensBridge Camera ({receiver_label}).")
+                },
+            })
+        }
+
+        fn reset(&mut self) {
+            for sender in &mut self.senders {
+                sender.reset_handles();
+            }
+        }
+    }
+
     struct UnityCaptureNames {
+        label: String,
         mutex: Vec<u16>,
         want: Vec<u16>,
         sent: Vec<u16>,
@@ -199,6 +273,7 @@ mod windows_bridge {
     impl UnityCaptureNames {
         fn first_device_candidates() -> Vec<Self> {
             let mut candidates = vec![Self::new(
+                "legacy slot",
                 "UnityCapture_Mutx",
                 "UnityCapture_Want",
                 "UnityCapture_Sent",
@@ -207,6 +282,7 @@ mod windows_bridge {
 
             for slot in '0'..='9' {
                 candidates.push(Self::new(
+                    &format!("slot {slot}"),
                     &format!("UnityCapture_Mutx{slot}"),
                     &format!("UnityCapture_Want{slot}"),
                     &format!("UnityCapture_Sent{slot}"),
@@ -217,8 +293,9 @@ mod windows_bridge {
             candidates
         }
 
-        fn new(mutex: &str, want: &str, sent: &str, data: &str) -> Self {
+        fn new(label: &str, mutex: &str, want: &str, sent: &str, data: &str) -> Self {
             Self {
+                label: label.into(),
                 mutex: wide_null(mutex),
                 want: wide_null(want),
                 sent: wide_null(sent),
@@ -228,6 +305,8 @@ mod windows_bridge {
     }
 
     struct UnityCaptureSender {
+        label: String,
+        names: UnityCaptureNames,
         mutex: HANDLE,
         want_event: HANDLE,
         sent_event: HANDLE,
@@ -239,72 +318,29 @@ mod windows_bridge {
     unsafe impl Send for UnityCaptureSender {}
 
     impl UnityCaptureSender {
-        fn open_first() -> Result<Self, UnityCaptureSendError> {
-            let mut last_error = None;
-            for names in UnityCaptureNames::first_device_candidates() {
-                match Self::open(names) {
-                    Ok(sender) => return Ok(sender),
-                    Err(err) => last_error = Some(err),
-                }
+        fn new(names: UnityCaptureNames) -> Self {
+            Self {
+                label: names.label.clone(),
+                names,
+                mutex: null_mut(),
+                want_event: null_mut(),
+                sent_event: null_mut(),
+                shared_file: null_mut(),
+                shared_view: null_mut(),
+                frames_delivered: 0,
             }
-
-            Err(last_error.unwrap_or_else(|| {
-                UnityCaptureSendError::NotReady(
-                    "LensBridge Camera is not open in a target app yet. Install the driver, then select LensBridge Camera in Chrome or OBS.".into(),
-                )
-            }))
         }
 
-        fn open(names: UnityCaptureNames) -> Result<Self, UnityCaptureSendError> {
-            let mut handles = PartialHandles::default();
+        fn label(&self) -> &str {
+            &self.label
+        }
 
-            unsafe {
-                handles.mutex = OpenMutexW(SYNCHRONIZE, 0, names.mutex.as_ptr());
-                if handles.mutex.is_null() {
-                    return Err(UnityCaptureSendError::NotReady(
-                        "LensBridge Camera has not been opened by a receiving app yet.".into(),
-                    ));
-                }
-
-                let wait = WaitForSingleObject(handles.mutex, 500);
-                if wait != WAIT_OBJECT_0 {
-                    return Err(UnityCaptureSendError::Windows(
-                        "Timed out while opening the UnityCapture shared-memory mutex.".into(),
-                    ));
-                }
-                let _mutex_guard = MutexReleaseGuard(handles.mutex);
-
-                handles.want_event = CreateEventW(null(), 0, 0, names.want.as_ptr());
-                if handles.want_event.is_null() {
-                    return Err(last_windows_error(
-                        "Could not create UnityCapture want-frame event.",
-                    ));
-                }
-
-                handles.sent_event = OpenEventW(EVENT_MODIFY_STATE, 0, names.sent.as_ptr());
-                if handles.sent_event.is_null() {
-                    return Err(UnityCaptureSendError::NotReady(
-                        "LensBridge Camera is opening. Keep the camera picker on LensBridge Camera for a moment.".into(),
-                    ));
-                }
-
-                handles.shared_file = OpenFileMappingW(FILE_MAP_WRITE, 0, names.data.as_ptr());
-                if handles.shared_file.is_null() {
-                    return Err(UnityCaptureSendError::NotReady(
-                        "LensBridge Camera shared memory is not ready yet. Keep the target app camera preview open.".into(),
-                    ));
-                }
-
-                handles.shared_view =
-                    MapViewOfFile(handles.shared_file, FILE_MAP_WRITE, 0, 0, 0).Value as *mut u8;
-                if handles.shared_view.is_null() {
-                    return Err(last_windows_error(
-                        "Could not map UnityCapture shared memory.",
-                    ));
-                }
-            }
-
-            Ok(handles.into_sender())
+        fn has_partial_state(&self) -> bool {
+            !self.mutex.is_null()
+                || !self.want_event.is_null()
+                || !self.sent_event.is_null()
+                || !self.shared_file.is_null()
+                || !self.shared_view.is_null()
         }
 
         fn send(
@@ -320,6 +356,8 @@ mod windows_bridge {
                     rgba.len()
                 )));
             }
+
+            self.ensure_open()?;
 
             unsafe {
                 let wait = WaitForSingleObject(self.mutex, 250);
@@ -391,81 +429,100 @@ mod windows_bridge {
                 })
             }
         }
+
+        fn ensure_open(&mut self) -> Result<(), UnityCaptureSendError> {
+            unsafe {
+                if self.mutex.is_null() {
+                    self.mutex = OpenMutexW(SYNCHRONIZE, 0, self.names.mutex.as_ptr());
+                    if self.mutex.is_null() {
+                        return Err(UnityCaptureSendError::NotReady(
+                            "LensBridge Camera has not been opened by a receiving app yet.".into(),
+                        ));
+                    }
+                }
+
+                let wait = WaitForSingleObject(self.mutex, 500);
+                if wait != WAIT_OBJECT_0 {
+                    self.reset_handles();
+                    return Err(UnityCaptureSendError::Windows(
+                        "Timed out while opening the UnityCapture shared-memory mutex.".into(),
+                    ));
+                }
+                let _mutex_guard = MutexReleaseGuard(self.mutex);
+
+                if self.want_event.is_null() {
+                    self.want_event = CreateEventW(null(), 0, 0, self.names.want.as_ptr());
+                    if self.want_event.is_null() {
+                        return Err(last_windows_error(
+                            "Could not create UnityCapture want-frame event.",
+                        ));
+                    }
+                }
+
+                if self.sent_event.is_null() {
+                    self.sent_event = OpenEventW(EVENT_MODIFY_STATE, 0, self.names.sent.as_ptr());
+                    if self.sent_event.is_null() {
+                        return Err(UnityCaptureSendError::NotReady(
+                            "LensBridge Camera receiver is starting. Keep the target app camera preview open for a moment.".into(),
+                        ));
+                    }
+                }
+
+                if self.shared_file.is_null() {
+                    self.shared_file =
+                        OpenFileMappingW(FILE_MAP_WRITE, 0, self.names.data.as_ptr());
+                    if self.shared_file.is_null() {
+                        return Err(UnityCaptureSendError::NotReady(
+                            "LensBridge Camera shared memory is not ready yet. Keep the target app camera preview open.".into(),
+                        ));
+                    }
+                }
+
+                if self.shared_view.is_null() {
+                    self.shared_view =
+                        MapViewOfFile(self.shared_file, FILE_MAP_WRITE, 0, 0, 0).Value as *mut u8;
+                    if self.shared_view.is_null() {
+                        return Err(last_windows_error(
+                            "Could not map UnityCapture shared memory.",
+                        ));
+                    }
+                }
+            }
+
+            Ok(())
+        }
+
+        fn reset_handles(&mut self) {
+            unsafe {
+                if !self.shared_view.is_null() {
+                    UnmapViewOfFile(MEMORY_MAPPED_VIEW_ADDRESS {
+                        Value: self.shared_view as _,
+                    });
+                    self.shared_view = null_mut();
+                }
+                if !self.shared_file.is_null() {
+                    CloseHandle(self.shared_file);
+                    self.shared_file = null_mut();
+                }
+                if !self.sent_event.is_null() {
+                    CloseHandle(self.sent_event);
+                    self.sent_event = null_mut();
+                }
+                if !self.want_event.is_null() {
+                    CloseHandle(self.want_event);
+                    self.want_event = null_mut();
+                }
+                if !self.mutex.is_null() {
+                    CloseHandle(self.mutex);
+                    self.mutex = null_mut();
+                }
+            }
+        }
     }
 
     impl Drop for UnityCaptureSender {
         fn drop(&mut self) {
-            unsafe {
-                if !self.shared_view.is_null() {
-                    UnmapViewOfFile(MEMORY_MAPPED_VIEW_ADDRESS {
-                        Value: self.shared_view as _,
-                    });
-                }
-                if !self.shared_file.is_null() {
-                    CloseHandle(self.shared_file);
-                }
-                if !self.sent_event.is_null() {
-                    CloseHandle(self.sent_event);
-                }
-                if !self.want_event.is_null() {
-                    CloseHandle(self.want_event);
-                }
-                if !self.mutex.is_null() {
-                    CloseHandle(self.mutex);
-                }
-            }
-        }
-    }
-
-    #[derive(Default)]
-    struct PartialHandles {
-        mutex: HANDLE,
-        want_event: HANDLE,
-        sent_event: HANDLE,
-        shared_file: HANDLE,
-        shared_view: *mut u8,
-    }
-
-    impl PartialHandles {
-        fn into_sender(mut self) -> UnityCaptureSender {
-            let sender = UnityCaptureSender {
-                mutex: self.mutex,
-                want_event: self.want_event,
-                sent_event: self.sent_event,
-                shared_file: self.shared_file,
-                shared_view: self.shared_view,
-                frames_delivered: 0,
-            };
-            self.mutex = null_mut();
-            self.want_event = null_mut();
-            self.sent_event = null_mut();
-            self.shared_file = null_mut();
-            self.shared_view = null_mut();
-            sender
-        }
-    }
-
-    impl Drop for PartialHandles {
-        fn drop(&mut self) {
-            unsafe {
-                if !self.shared_view.is_null() {
-                    UnmapViewOfFile(MEMORY_MAPPED_VIEW_ADDRESS {
-                        Value: self.shared_view as _,
-                    });
-                }
-                if !self.shared_file.is_null() {
-                    CloseHandle(self.shared_file);
-                }
-                if !self.sent_event.is_null() {
-                    CloseHandle(self.sent_event);
-                }
-                if !self.want_event.is_null() {
-                    CloseHandle(self.want_event);
-                }
-                if !self.mutex.is_null() {
-                    CloseHandle(self.mutex);
-                }
-            }
+            self.reset_handles();
         }
     }
 
