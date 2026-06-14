@@ -1,4 +1,10 @@
-import type { PairingPayload, SignalingMessage, StreamMetrics } from "@lensbridge/shared";
+import {
+  getQualityProfile,
+  type PairingPayload,
+  type QualityProfileId,
+  type SignalingMessage,
+  type StreamMetrics
+} from "@lensbridge/shared";
 import { SignalingClient } from "./signalingClient";
 import { readOutboundMetrics } from "./metrics";
 
@@ -9,16 +15,28 @@ export interface PhonePeer {
 export interface StartPhonePeerOptions {
   pairing: PairingPayload;
   stream: MediaStream;
+  quality: QualityProfileId;
   onStatus: (status: string) => void;
   onMetrics: (metrics: Partial<StreamMetrics>) => void;
 }
 
-export async function startPhonePeer({ pairing, stream, onStatus, onMetrics }: StartPhonePeerOptions): Promise<PhonePeer> {
+export async function startPhonePeer({
+  pairing,
+  stream,
+  quality,
+  onStatus,
+  onMetrics
+}: StartPhonePeerOptions): Promise<PhonePeer> {
   const client = new SignalingClient(pairing, "phone");
   const peer = new RTCPeerConnection({ iceServers: [] });
   let metricsTimer = 0;
 
-  stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+  for (const track of stream.getTracks()) {
+    const sender = peer.addTrack(track, stream);
+    if (track.kind === "video") {
+      await configureVideoSender(sender, quality);
+    }
+  }
 
   peer.onicecandidate = (event) => {
     if (event.candidate) {
@@ -63,4 +81,29 @@ export async function startPhonePeer({ pairing, stream, onStatus, onMetrics }: S
       client.close();
     }
   };
+}
+
+async function configureVideoSender(sender: RTCRtpSender, quality: QualityProfileId) {
+  const profile = getQualityProfile(quality);
+  const parameters = sender.getParameters();
+  const [firstEncoding = {}] = parameters.encodings ?? [];
+  parameters.encodings = [
+    {
+      ...firstEncoding,
+      maxBitrate: (profile.bitrateKbps ?? 3500) * 1000,
+      maxFramerate: Math.min(profile.fps, 30),
+      scaleResolutionDownBy: 1
+    }
+  ];
+
+  const tunedParameters = parameters as RTCRtpSendParameters & {
+    degradationPreference?: "maintain-framerate" | "maintain-resolution" | "balanced";
+  };
+  tunedParameters.degradationPreference = "maintain-resolution";
+
+  try {
+    await sender.setParameters(tunedParameters);
+  } catch {
+    // Some mobile browsers expose read-only sender parameters. The camera constraints still carry the quality target.
+  }
 }

@@ -13,14 +13,17 @@ interface StreamPageProps {
 }
 
 export function StreamPage({ pairing, camera, quality, onQualityChange }: StreamPageProps) {
-  const stream = useWebRTCStream(pairing, camera.stream);
+  const stream = useWebRTCStream(pairing, camera.stream, quality);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <CameraPreview stream={camera.stream} />
       <div className="absolute left-4 right-4 top-4 flex items-center justify-between pt-[env(safe-area-inset-top)]">
         <ConnectionHUD status={stream.status} metrics={stream.metrics} />
-        <button className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-ink" onClick={() => void stream.start()}>
+        <button
+          className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-ink"
+          onClick={() => void stream.start()}
+        >
           Start stream
         </button>
       </div>

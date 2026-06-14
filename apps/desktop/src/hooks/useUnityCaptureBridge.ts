@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { publishUnityCaptureFrame, resetUnityCaptureBridge } from "../lib/api";
 
 const TARGET_WIDTH = 960;
-const TARGET_HEIGHT = 540;
-const ACTIVE_INTERVAL_MS = 1000 / 12;
+const TARGET_HEIGHT = 720;
+const TARGET_FPS = 30;
+const ACTIVE_INTERVAL_MS = 1000 / TARGET_FPS;
 const WAITING_INTERVAL_MS = 1000;
+const UI_UPDATE_INTERVAL_MS = 500;
 
 export type DirectCameraBridgeStatus = "idle" | "waitingForTarget" | "streaming" | "error";
 
@@ -31,6 +33,8 @@ const INITIAL_STATE: DirectCameraBridgeState = {
 export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolean) {
   const [state, setState] = useState<DirectCameraBridgeState>(INITIAL_STATE);
   const frameCounter = useRef({ frames: 0, startedAt: performance.now() });
+  const lastFps = useRef(0);
+  const lastUiUpdateAt = useRef(0);
 
   useEffect(() => {
     let disposed = false;
@@ -46,6 +50,7 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
+    video.autoplay = true;
     video.srcObject = stream;
 
     const canvas = document.createElement("canvas");
@@ -62,6 +67,11 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
       return undefined;
     }
     const frameContext = context;
+    frameContext.imageSmoothingEnabled = true;
+    frameContext.imageSmoothingQuality = "high";
+    frameCounter.current = { frames: 0, startedAt: performance.now() };
+    lastFps.current = 0;
+    lastUiUpdateAt.current = 0;
 
     async function pumpFrame() {
       if (disposed || inFlight) return;
@@ -72,7 +82,7 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
 
       inFlight = true;
       try {
-        frameContext.drawImage(video, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+        drawDirectShowFrame(frameContext, video, TARGET_WIDTH, TARGET_HEIGHT);
         const imageData = frameContext.getImageData(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
         const result = await publishUnityCaptureFrame({
           width: TARGET_WIDTH,
@@ -88,23 +98,25 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
           const now = performance.now();
           const elapsedMs = now - frameCounter.current.startedAt;
           const fps =
-            elapsedMs >= 1000
-              ? Math.round((frameCounter.current.frames * 1000) / elapsedMs)
-              : state.fps;
+            elapsedMs >= 1000 ? Math.round((frameCounter.current.frames * 1000) / elapsedMs) : lastFps.current;
 
           if (elapsedMs >= 1000) {
+            lastFps.current = fps;
             frameCounter.current = { frames: 0, startedAt: now };
           }
 
-          setState({
-            status: "streaming",
-            enabled: true,
-            fps,
-            framesDelivered: result.framesDelivered,
-            resolution: `${result.width}x${result.height}`,
-            message: result.message,
-            skippedFrame: result.skippedFrame
-          });
+          if (now - lastUiUpdateAt.current >= UI_UPDATE_INTERVAL_MS || result.framesDelivered <= 1) {
+            lastUiUpdateAt.current = now;
+            setState({
+              status: "streaming",
+              enabled: true,
+              fps,
+              framesDelivered: result.framesDelivered,
+              resolution: `${result.width}x${result.height}`,
+              message: result.message,
+              skippedFrame: result.skippedFrame
+            });
+          }
           schedule(ACTIVE_INTERVAL_MS);
           return;
         }
@@ -157,6 +169,41 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
   }, [stream, mirror]);
 
   return useMemo(() => state, [state]);
+}
+
+function drawDirectShowFrame(
+  context: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  targetWidth: number,
+  targetHeight: number
+) {
+  const sourceWidth = video.videoWidth || targetWidth;
+  const sourceHeight = video.videoHeight || targetHeight;
+  const sourceRatio = sourceWidth / sourceHeight;
+  const targetRatio = targetWidth / targetHeight;
+
+  let drawWidth = targetWidth;
+  let drawHeight = targetHeight;
+  let drawX = 0;
+  let drawY = 0;
+
+  if (sourceRatio > targetRatio) {
+    drawHeight = targetHeight;
+    drawWidth = targetHeight * sourceRatio;
+    drawX = (targetWidth - drawWidth) / 2;
+  } else {
+    drawWidth = targetWidth;
+    drawHeight = targetWidth / sourceRatio;
+    drawY = (targetHeight - drawHeight) / 2;
+  }
+
+  context.save();
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, targetWidth, targetHeight);
+  context.translate(0, targetHeight);
+  context.scale(1, -1);
+  context.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+  context.restore();
 }
 
 function bytesToBase64(bytes: Uint8ClampedArray) {
