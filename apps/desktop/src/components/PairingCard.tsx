@@ -33,8 +33,8 @@ export function PairingCard({
         <p className="text-xs font-semibold uppercase tracking-wide text-brand">Pair phone</p>
         <h2 className="mt-2 text-2xl font-semibold text-white">Scan once. Use the phone as LensBridge Camera.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-          Open the phone page, scan this code, and allow camera access. The stream stays on your local network; once it
-          is live, Windows apps can open LensBridge Camera.
+          Open the phone page, scan this code, and allow camera access. The QR link expires for safety, but an active
+          camera stream is not limited to the countdown.
         </p>
 
         <div className="mt-5 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
@@ -43,7 +43,7 @@ export function PairingCard({
             <div className="mt-1 font-medium text-white">{session?.desktopName ?? "Detecting"}</div>
           </div>
           <div className="border border-line bg-white/[0.025] p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">Session expires</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Pairing link expires</div>
             <div className="mt-1 font-medium text-white">{formatTimeLeft(expiresInSeconds)}</div>
           </div>
         </div>
