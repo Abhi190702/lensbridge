@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { publishUnityCaptureFrame, resetUnityCaptureBridge } from "../lib/api";
 
-const TARGET_WIDTH = 960;
-const TARGET_HEIGHT = 540;
+const TARGET_WIDTH = 1280;
+const TARGET_HEIGHT = 720;
 const TARGET_FPS = 30;
 const ACTIVE_INTERVAL_MS = 1000 / TARGET_FPS;
 const WAITING_INTERVAL_MS = 1000;
@@ -20,6 +20,10 @@ export interface DirectCameraBridgeState {
   skippedFrame: boolean;
 }
 
+interface CapturedFrame {
+  bytes: Uint8Array;
+}
+
 const INITIAL_STATE: DirectCameraBridgeState = {
   status: "idle",
   enabled: true,
@@ -35,14 +39,18 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
   const frameCounter = useRef({ frames: 0, startedAt: performance.now() });
   const lastFps = useRef(0);
   const lastUiUpdateAt = useRef(0);
+  const latestFrame = useRef<CapturedFrame | null>(null);
 
   useEffect(() => {
     let disposed = false;
-    let timer: number | null = null;
-    let videoFrameCallback: number | null = null;
-    let inFlight = false;
+    let captureRaf: number | null = null;
+    let captureVideoFrameCallback: number | null = null;
+    let transportTimer: number | null = null;
+    let transportInFlight = false;
+    let lastCaptureAt = 0;
 
     if (!stream) {
+      latestFrame.current = null;
       void resetUnityCaptureBridge();
       setState(INITIAL_STATE);
       return undefined;
@@ -71,59 +79,81 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
       }));
       return undefined;
     }
+
     const frameContext = context;
     frameContext.imageSmoothingEnabled = true;
     frameContext.imageSmoothingQuality = "high";
     frameCounter.current = { frames: 0, startedAt: performance.now() };
     lastFps.current = 0;
     lastUiUpdateAt.current = 0;
+    latestFrame.current = null;
 
-    async function pumpFrame() {
-      if (disposed || inFlight) return;
-      const pumpStartedAt = performance.now();
-      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-        schedule(WAITING_INTERVAL_MS);
+    function captureLatestFrame(now = performance.now()) {
+      if (disposed || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      if (now - lastCaptureAt < ACTIVE_INTERVAL_MS * 0.75) return;
+
+      lastCaptureAt = now;
+      drawDirectShowFrame(frameContext, video, TARGET_WIDTH, TARGET_HEIGHT);
+      const imageData = frameContext.getImageData(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+      latestFrame.current = {
+        bytes: new Uint8Array(imageData.data.buffer, imageData.data.byteOffset, imageData.data.byteLength)
+      };
+    }
+
+    function scheduleCapture() {
+      if (disposed) return;
+      if ("requestVideoFrameCallback" in video) {
+        captureVideoFrameCallback = video.requestVideoFrameCallback((_now) => {
+          captureVideoFrameCallback = null;
+          captureLatestFrame();
+          scheduleCapture();
+        });
         return;
       }
 
-      inFlight = true;
+      captureRaf = window.requestAnimationFrame((now) => {
+        captureRaf = null;
+        captureLatestFrame(now);
+        scheduleCapture();
+      });
+    }
+
+    async function flushLatestFrame() {
+      if (disposed) return;
+
+      if (transportInFlight) {
+        scheduleTransport(ACTIVE_INTERVAL_MS);
+        return;
+      }
+
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        scheduleTransport(WAITING_INTERVAL_MS);
+        return;
+      }
+
+      const frame = latestFrame.current;
+      if (!frame) {
+        scheduleTransport(ACTIVE_INTERVAL_MS);
+        return;
+      }
+
+      latestFrame.current = null;
+      transportInFlight = true;
+      const startedAt = performance.now();
+
       try {
-        drawDirectShowFrame(frameContext, video, TARGET_WIDTH, TARGET_HEIGHT);
-        const imageData = frameContext.getImageData(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
         const result = await publishUnityCaptureFrame({
           width: TARGET_WIDTH,
           height: TARGET_HEIGHT,
-          rgbaBase64: bytesToBase64(imageData.data),
+          rgbaBytes: frame.bytes,
           mirror
         });
 
         if (disposed) return;
 
         if (result.delivered) {
-          frameCounter.current.frames += 1;
-          const now = performance.now();
-          const elapsedMs = now - frameCounter.current.startedAt;
-          const fps =
-            elapsedMs >= 1000 ? Math.round((frameCounter.current.frames * 1000) / elapsedMs) : lastFps.current;
-
-          if (elapsedMs >= 1000) {
-            lastFps.current = fps;
-            frameCounter.current = { frames: 0, startedAt: now };
-          }
-
-          if (now - lastUiUpdateAt.current >= UI_UPDATE_INTERVAL_MS || result.framesDelivered <= 1) {
-            lastUiUpdateAt.current = now;
-            setState({
-              status: "streaming",
-              enabled: true,
-              fps,
-              framesDelivered: result.framesDelivered,
-              resolution: `${result.width}x${result.height}`,
-              message: result.message,
-              skippedFrame: result.skippedFrame
-            });
-          }
-          schedule(nextActiveDelay(pumpStartedAt, result.skippedFrame));
+          updateStreamingState(result);
+          scheduleTransport(nextActiveDelay(startedAt, result.skippedFrame));
           return;
         }
 
@@ -132,10 +162,11 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
           status: "waitingForTarget",
           fps: 0,
           framesDelivered: result.framesDelivered,
+          resolution: `${TARGET_WIDTH}x${TARGET_HEIGHT}`,
           message: result.message,
           skippedFrame: false
         }));
-        schedule(WAITING_INTERVAL_MS);
+        scheduleTransport(WAITING_INTERVAL_MS);
       } catch (error) {
         if (!disposed) {
           setState((current) => ({
@@ -144,32 +175,44 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
             fps: 0,
             message: error instanceof Error ? error.message : "LensBridge Camera frame bridge failed."
           }));
-          schedule(WAITING_INTERVAL_MS);
+          scheduleTransport(WAITING_INTERVAL_MS);
         }
       } finally {
-        inFlight = false;
+        transportInFlight = false;
       }
     }
 
-    function schedule(delayMs: number) {
-      if (disposed) return;
-      if (timer) window.clearTimeout(timer);
-      if (videoFrameCallback !== null && "cancelVideoFrameCallback" in video) {
-        video.cancelVideoFrameCallback(videoFrameCallback);
-        videoFrameCallback = null;
+    function updateStreamingState(result: Awaited<ReturnType<typeof publishUnityCaptureFrame>>) {
+      frameCounter.current.frames += 1;
+      const now = performance.now();
+      const elapsedMs = now - frameCounter.current.startedAt;
+      const fps = elapsedMs >= 1000 ? Math.round((frameCounter.current.frames * 1000) / elapsedMs) : lastFps.current;
+
+      if (elapsedMs >= 1000) {
+        lastFps.current = fps;
+        frameCounter.current = { frames: 0, startedAt: now };
       }
 
-      timer = window.setTimeout(() => {
-        timer = null;
-        if ("requestVideoFrameCallback" in video) {
-          videoFrameCallback = video.requestVideoFrameCallback(() => {
-            videoFrameCallback = null;
-            void pumpFrame();
-          });
-          return;
-        }
+      if (now - lastUiUpdateAt.current < UI_UPDATE_INTERVAL_MS && result.framesDelivered > 1) return;
 
-        void pumpFrame();
+      lastUiUpdateAt.current = now;
+      setState({
+        status: "streaming",
+        enabled: true,
+        fps,
+        framesDelivered: result.framesDelivered,
+        resolution: `${result.width}x${result.height}`,
+        message: result.message,
+        skippedFrame: result.skippedFrame
+      });
+    }
+
+    function scheduleTransport(delayMs: number) {
+      if (disposed) return;
+      if (transportTimer) window.clearTimeout(transportTimer);
+      transportTimer = window.setTimeout(() => {
+        transportTimer = null;
+        void flushLatestFrame();
       }, delayMs);
     }
 
@@ -177,16 +220,20 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
     setState((current) => ({
       ...current,
       status: "waitingForTarget",
+      resolution: `${TARGET_WIDTH}x${TARGET_HEIGHT}`,
       message: "Phone stream is ready. Select LensBridge Camera in the target app to start the direct bridge."
     }));
-    schedule(250);
+    scheduleCapture();
+    scheduleTransport(250);
 
     return () => {
       disposed = true;
-      if (timer) window.clearTimeout(timer);
-      if (videoFrameCallback !== null && "cancelVideoFrameCallback" in video) {
-        video.cancelVideoFrameCallback(videoFrameCallback);
+      latestFrame.current = null;
+      if (captureRaf !== null) window.cancelAnimationFrame(captureRaf);
+      if (captureVideoFrameCallback !== null && "cancelVideoFrameCallback" in video) {
+        video.cancelVideoFrameCallback(captureVideoFrameCallback);
       }
+      if (transportTimer) window.clearTimeout(transportTimer);
       video.pause();
       video.srcObject = null;
       void resetUnityCaptureBridge();
@@ -196,8 +243,8 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
   return useMemo(() => state, [state]);
 }
 
-function nextActiveDelay(pumpStartedAt: number, receiverSkippedFrame: boolean) {
-  const elapsedMs = performance.now() - pumpStartedAt;
+function nextActiveDelay(startedAt: number, receiverSkippedFrame: boolean) {
+  const elapsedMs = performance.now() - startedAt;
   const targetInterval = receiverSkippedFrame ? ACTIVE_INTERVAL_MS * 1.2 : ACTIVE_INTERVAL_MS;
   return Math.max(0, targetInterval - elapsedMs);
 }
@@ -235,16 +282,4 @@ function drawDirectShowFrame(
   context.scale(1, -1);
   context.drawImage(video, drawX, drawY, drawWidth, drawHeight);
   context.restore();
-}
-
-function bytesToBase64(bytes: Uint8ClampedArray) {
-  let binary = "";
-  const chunkSize = 0x8000;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-
-  return btoa(binary);
 }

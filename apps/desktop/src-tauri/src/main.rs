@@ -58,6 +58,7 @@ fn main() {
             commands::get_virtual_camera_status,
             commands::get_obs_virtual_camera_status,
             commands::publish_unity_capture_frame,
+            commands::publish_unity_capture_frame_binary,
             commands::reset_unity_capture_bridge
         ])
         .run(tauri::generate_context!())

@@ -32,6 +32,9 @@ export async function startPhonePeer({
   let metricsTimer = 0;
 
   for (const track of stream.getTracks()) {
+    if (track.kind === "video") {
+      (track as MediaStreamTrack & { contentHint?: string }).contentHint = "motion";
+    }
     const sender = peer.addTrack(track, stream);
     if (track.kind === "video") {
       await configureVideoSender(sender, quality);
@@ -99,7 +102,7 @@ async function configureVideoSender(sender: RTCRtpSender, quality: QualityProfil
   const tunedParameters = parameters as RTCRtpSendParameters & {
     degradationPreference?: "maintain-framerate" | "maintain-resolution" | "balanced";
   };
-  tunedParameters.degradationPreference = "maintain-resolution";
+  tunedParameters.degradationPreference = "maintain-framerate";
 
   try {
     await sender.setParameters(tunedParameters);

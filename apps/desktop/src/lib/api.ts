@@ -16,7 +16,7 @@ export interface ObsVirtualCameraStatus {
 export interface UnityCaptureFramePayload {
   width: number;
   height: number;
-  rgbaBase64: string;
+  rgbaBytes: Uint8Array;
   mirror: boolean;
 }
 
@@ -79,7 +79,7 @@ export async function getObsVirtualCameraStatus(): Promise<ObsVirtualCameraStatu
 
 export async function publishUnityCaptureFrame(frame: UnityCaptureFramePayload): Promise<UnityCapturePublishResult> {
   if (isTauriRuntime()) {
-    return invoke<UnityCapturePublishResult>("publish_unity_capture_frame", { frame });
+    return invoke<UnityCapturePublishResult>("publish_unity_capture_frame_binary", encodeUnityCaptureFrame(frame));
   }
 
   return {
@@ -91,6 +91,17 @@ export async function publishUnityCaptureFrame(frame: UnityCaptureFramePayload):
     height: frame.height,
     message: "Direct camera bridge is available in the Tauri desktop app."
   };
+}
+
+function encodeUnityCaptureFrame(frame: UnityCaptureFramePayload) {
+  const headerBytes = 9;
+  const payload = new Uint8Array(headerBytes + frame.rgbaBytes.byteLength);
+  const header = new DataView(payload.buffer, payload.byteOffset, headerBytes);
+  header.setUint32(0, frame.width, true);
+  header.setUint32(4, frame.height, true);
+  payload[8] = frame.mirror ? 1 : 0;
+  payload.set(frame.rgbaBytes, headerBytes);
+  return payload;
 }
 
 export async function resetUnityCaptureBridge(): Promise<void> {

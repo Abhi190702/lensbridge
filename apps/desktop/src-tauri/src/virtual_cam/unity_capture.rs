@@ -1,4 +1,4 @@
-use crate::errors::LensBridgeResult;
+use crate::errors::{LensBridgeError, LensBridgeResult};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize)]
@@ -45,6 +45,53 @@ pub fn publish_unity_capture_frame(
     }
 }
 
+pub fn publish_unity_capture_frame_binary(
+    payload: &[u8],
+) -> LensBridgeResult<UnityCapturePublishResult> {
+    const HEADER_BYTES: usize = 9;
+
+    if payload.len() < HEADER_BYTES {
+        return Err(LensBridgeError::new(
+            "virtual_cam_bad_frame",
+            "Binary frame payload is too short.",
+        ));
+    }
+
+    let width = u32::from_le_bytes(payload[0..4].try_into().map_err(|_| {
+        LensBridgeError::new(
+            "virtual_cam_bad_frame",
+            "Could not read binary frame width.",
+        )
+    })?);
+    let height = u32::from_le_bytes(payload[4..8].try_into().map_err(|_| {
+        LensBridgeError::new(
+            "virtual_cam_bad_frame",
+            "Could not read binary frame height.",
+        )
+    })?);
+    let mirror = payload[8] != 0;
+    let rgba = &payload[HEADER_BYTES..];
+
+    #[cfg(target_os = "windows")]
+    {
+        windows_bridge::publish_raw(width, height, mirror, rgba)
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        validate_frame(width, height, rgba)?;
+        Ok(UnityCapturePublishResult {
+            ready: false,
+            delivered: false,
+            skipped_frame: false,
+            frames_delivered: 0,
+            width,
+            height,
+            message: "UnityCapture DirectShow output is only available on Windows.".into(),
+        })
+    }
+}
+
 pub fn reset_unity_capture_bridge() -> LensBridgeResult<()> {
     #[cfg(target_os = "windows")]
     {
@@ -54,9 +101,38 @@ pub fn reset_unity_capture_bridge() -> LensBridgeResult<()> {
     Ok(())
 }
 
+fn validate_frame(width: u32, height: u32, rgba: &[u8]) -> LensBridgeResult<usize> {
+    if width == 0 || height == 0 {
+        return Err(LensBridgeError::new(
+            "virtual_cam_bad_frame",
+            "Frame dimensions must be greater than zero.",
+        ));
+    }
+
+    let expected_len = width
+        .checked_mul(height)
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| {
+            LensBridgeError::new(
+                "virtual_cam_frame_too_large",
+                "Frame dimensions are too large.",
+            )
+        })? as usize;
+
+    if rgba.len() != expected_len {
+        return Err(LensBridgeError::new(
+            "virtual_cam_bad_frame",
+            "RGBA frame size does not match width and height.",
+        )
+        .with_detail(format!("expected {expected_len} bytes, got {}", rgba.len())));
+    }
+
+    Ok(expected_len)
+}
+
 #[cfg(target_os = "windows")]
 mod windows_bridge {
-    use super::{UnityCaptureFramePayload, UnityCapturePublishResult};
+    use super::{validate_frame, UnityCaptureFramePayload, UnityCapturePublishResult};
     use crate::errors::{LensBridgeError, LensBridgeResult};
     use base64::{engine::general_purpose, Engine};
     use std::{
@@ -91,24 +167,6 @@ mod windows_bridge {
     pub fn publish(
         payload: UnityCaptureFramePayload,
     ) -> LensBridgeResult<UnityCapturePublishResult> {
-        let expected_len = payload
-            .width
-            .checked_mul(payload.height)
-            .and_then(|pixels| pixels.checked_mul(4))
-            .ok_or_else(|| {
-                LensBridgeError::new(
-                    "virtual_cam_frame_too_large",
-                    "Frame dimensions are too large.",
-                )
-            })? as usize;
-
-        if payload.width == 0 || payload.height == 0 {
-            return Err(LensBridgeError::new(
-                "virtual_cam_bad_frame",
-                "Frame dimensions must be greater than zero.",
-            ));
-        }
-
         let rgba = general_purpose::STANDARD
             .decode(payload.rgba_base64.as_bytes())
             .map_err(|err| {
@@ -119,14 +177,16 @@ mod windows_bridge {
                 .with_detail(err.to_string())
             })?;
 
-        if rgba.len() != expected_len {
-            return Err(LensBridgeError::new(
-                "virtual_cam_bad_frame",
-                "RGBA frame size does not match width and height.",
-            )
-            .with_detail(format!("expected {expected_len} bytes, got {}", rgba.len())));
-        }
+        publish_raw(payload.width, payload.height, payload.mirror, &rgba)
+    }
 
+    pub fn publish_raw(
+        width: u32,
+        height: u32,
+        mirror: bool,
+        rgba: &[u8],
+    ) -> LensBridgeResult<UnityCapturePublishResult> {
+        validate_frame(width, height, rgba)?;
         let bridge = BRIDGE.get_or_init(|| Mutex::new(UnityCaptureBridge::default()));
         let mut bridge = bridge.lock().map_err(|_| {
             LensBridgeError::new(
@@ -135,7 +195,7 @@ mod windows_bridge {
             )
         })?;
 
-        match bridge.publish(payload.width, payload.height, payload.mirror, &rgba) {
+        match bridge.publish(width, height, mirror, rgba) {
             Ok(result) => Ok(result),
             Err(UnityCaptureSendError::TooLarge(message)) => Err(LensBridgeError::new(
                 "virtual_cam_frame_too_large",
@@ -144,7 +204,7 @@ mod windows_bridge {
             .with_detail(message)),
             Err(UnityCaptureSendError::NotReady(message))
             | Err(UnityCaptureSendError::Windows(message)) => {
-                Ok(waiting_result(payload.width, payload.height, message))
+                Ok(waiting_result(width, height, message))
             }
         }
     }

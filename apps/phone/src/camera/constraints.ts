@@ -6,9 +6,9 @@ export function constraintsForQuality(
 ): MediaStreamConstraints {
   const profile = getQualityProfile(quality);
   const video: MediaTrackConstraints & { resizeMode?: "crop-and-scale" } = {
-    width: { min: 640, ideal: profile.width },
-    height: { min: 480, ideal: profile.height },
-    frameRate: { min: Math.min(24, profile.fps), ideal: profile.fps, max: profile.fps },
+    width: { ideal: profile.width, max: profile.width },
+    height: { ideal: profile.height, max: profile.height },
+    frameRate: { ideal: profile.fps, max: profile.fps },
     aspectRatio: { ideal: profile.width / profile.height },
     resizeMode: "crop-and-scale",
     facingMode: { ideal: facingMode }

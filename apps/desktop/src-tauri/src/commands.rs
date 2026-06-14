@@ -8,6 +8,7 @@ use crate::{
         unity_capture::{UnityCaptureFramePayload, UnityCapturePublishResult},
     },
 };
+use tauri::ipc::{InvokeBody, Request};
 
 #[tauri::command]
 pub fn get_pairing_session(state: tauri::State<'_, AppState>) -> LensBridgeResult<PairingPayload> {
@@ -50,6 +51,21 @@ pub fn publish_unity_capture_frame(
     frame: UnityCaptureFramePayload,
 ) -> LensBridgeResult<UnityCapturePublishResult> {
     crate::virtual_cam::unity_capture::publish_unity_capture_frame(frame)
+}
+
+#[tauri::command]
+pub fn publish_unity_capture_frame_binary(
+    request: Request<'_>,
+) -> LensBridgeResult<UnityCapturePublishResult> {
+    match request.body() {
+        InvokeBody::Raw(payload) => {
+            crate::virtual_cam::unity_capture::publish_unity_capture_frame_binary(payload)
+        }
+        InvokeBody::Json(_) => Err(crate::errors::LensBridgeError::new(
+            "virtual_cam_bad_frame",
+            "Binary frame command expected a raw IPC payload.",
+        )),
+    }
 }
 
 #[tauri::command]
