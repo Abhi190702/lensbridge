@@ -1,8 +1,15 @@
 import type { ConnectionStatus, PairingPayload, SignalingEnvelope, SignalingMessage, StreamMetrics } from "@lensbridge/shared";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const SOCKET_RETRY_WINDOW_MS = 15000;
 const SOCKET_RETRY_DELAY_MS = 450;
+const STATS_INTERVAL_MS = 1500;
+
+interface InboundStatsSample {
+  bytesReceived: number;
+  framesDecoded: number;
+  timestamp: number;
+}
 
 export function useDesktopReceiver(session: PairingPayload | null) {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -11,6 +18,16 @@ export function useDesktopReceiver(session: PairingPayload | null) {
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const peerRef = useRef<RTCPeerConnection | null>(null);
+  const statsTimerRef = useRef<number | null>(null);
+  const inboundStatsSampleRef = useRef<InboundStatsSample | null>(null);
+
+  const stopStatsPolling = useCallback(() => {
+    if (statsTimerRef.current !== null) {
+      window.clearInterval(statsTimerRef.current);
+      statsTimerRef.current = null;
+    }
+    inboundStatsSampleRef.current = null;
+  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -18,6 +35,7 @@ export function useDesktopReceiver(session: PairingPayload | null) {
     let disposed = false;
     let opened = false;
     let retryTimer: number | null = null;
+    let iceRestartRequested = false;
     const retryStartedAt = performance.now();
     setStatus("waiting");
     setError(null);
@@ -36,9 +54,22 @@ export function useDesktopReceiver(session: PairingPayload | null) {
     };
 
     const closePeer = () => {
+      stopStatsPolling();
       peerRef.current?.close();
       peerRef.current = null;
       setRemoteStream(null);
+    };
+
+    const startStatsPolling = (peer: RTCPeerConnection) => {
+      stopStatsPolling();
+      statsTimerRef.current = window.setInterval(async () => {
+        if (disposed || peer.connectionState === "closed") return;
+        const { metrics, sample } = await readInboundMetrics(peer, inboundStatsSampleRef.current);
+        inboundStatsSampleRef.current = sample;
+        if (Object.keys(metrics).length > 0) {
+          setMetrics((current) => ({ ...current, ...metrics }));
+        }
+      }, STATS_INTERVAL_MS);
     };
 
     const ensurePeer = () => {
@@ -50,6 +81,7 @@ export function useDesktopReceiver(session: PairingPayload | null) {
         const [stream] = event.streams;
         setRemoteStream(stream ?? new MediaStream([event.track]));
         setStatus("connected");
+        startStatsPolling(peer);
         const settings = event.track.getSettings();
         setMetrics((current) => ({
           ...current,
@@ -66,9 +98,19 @@ export function useDesktopReceiver(session: PairingPayload | null) {
         }
       };
       peer.onconnectionstatechange = () => {
-        if (peer.connectionState === "failed") setStatus("failed");
+        if (peer.connectionState === "failed") {
+          setStatus("failed");
+          if (!iceRestartRequested) {
+            iceRestartRequested = true;
+            peer.restartIce();
+            send({ type: "ice-restart-request", sessionId: session.sessionId, reason: "Desktop ICE failed" });
+          }
+        }
         if (peer.connectionState === "disconnected") setStatus("disconnected");
-        if (peer.connectionState === "connected") setStatus("connected");
+        if (peer.connectionState === "connected") {
+          iceRestartRequested = false;
+          setStatus("connected");
+        }
       };
       return peer;
     };
@@ -172,7 +214,7 @@ export function useDesktopReceiver(session: PairingPayload | null) {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [session]);
+  }, [session, stopStatsPolling]);
 
   function disconnect() {
     socketRef.current?.send(
@@ -183,12 +225,95 @@ export function useDesktopReceiver(session: PairingPayload | null) {
         sentAt: new Date().toISOString()
       } satisfies SignalingEnvelope)
     );
+    stopStatsPolling();
     peerRef.current?.close();
+    peerRef.current = null;
     setRemoteStream(null);
     setStatus("disconnected");
   }
 
   return { remoteStream, status, metrics, error, disconnect };
+}
+
+async function readInboundMetrics(
+  peer: RTCPeerConnection,
+  previousSample: InboundStatsSample | null
+): Promise<{ metrics: Partial<StreamMetrics>; sample: InboundStatsSample | null }> {
+  const stats = await peer.getStats();
+  let metrics: Partial<StreamMetrics> = {
+    lastFrameAt: new Date().toISOString()
+  };
+  let sample: InboundStatsSample | null = null;
+
+  stats.forEach((report) => {
+    if (report.type === "inbound-rtp" && report.kind === "video") {
+      const record = report as RTCStats & Record<string, unknown>;
+      const bytesReceived = Number(record.bytesReceived ?? 0);
+      const framesDecoded = Number(record.framesDecoded ?? 0);
+      sample = {
+        bytesReceived,
+        framesDecoded,
+        timestamp: Number(record.timestamp ?? performance.now())
+      };
+      metrics = {
+        ...metrics,
+        bitrateKbps: bitrateFromSamples(previousSample, sample),
+        fps: framesPerSecondFromSamples(previousSample, sample, record.framesPerSecond),
+        jitter: secondsToMs(record.jitter),
+        latencyMs: jitterBufferLatencyMs(record),
+        packetLoss: numberOrUndefined(record.packetsLost)
+      };
+    }
+    if (report.type === "track" && report.kind === "video") {
+      const record = report as RTCStats & Record<string, unknown>;
+      metrics = {
+        ...metrics,
+        width: numberOrUndefined(record.frameWidth),
+        height: numberOrUndefined(record.frameHeight)
+      };
+    }
+  });
+
+  return { metrics, sample };
+}
+
+function bitrateFromSamples(previousSample: InboundStatsSample | null, currentSample: InboundStatsSample | null) {
+  if (!previousSample || !currentSample) return undefined;
+  const elapsedMs = currentSample.timestamp - previousSample.timestamp;
+  const bytesDelta = currentSample.bytesReceived - previousSample.bytesReceived;
+  if (elapsedMs <= 0 || bytesDelta < 0) return undefined;
+  return Math.round((bytesDelta * 8) / elapsedMs);
+}
+
+function framesPerSecondFromSamples(
+  previousSample: InboundStatsSample | null,
+  currentSample: InboundStatsSample | null,
+  reportedFps: unknown
+) {
+  const fps = numberOrUndefined(reportedFps);
+  if (fps !== undefined) return fps;
+  if (!previousSample || !currentSample) return undefined;
+
+  const elapsedMs = currentSample.timestamp - previousSample.timestamp;
+  const frameDelta = currentSample.framesDecoded - previousSample.framesDecoded;
+  if (elapsedMs <= 0 || frameDelta < 0) return undefined;
+  return Math.round((frameDelta * 1000) / elapsedMs);
+}
+
+function jitterBufferLatencyMs(record: Record<string, unknown>) {
+  const delay = numberOrUndefined(record.jitterBufferDelay);
+  const emitted = numberOrUndefined(record.jitterBufferEmittedCount);
+  if (delay === undefined || emitted === undefined || emitted <= 0) return undefined;
+  return Math.round((delay / emitted) * 1000);
+}
+
+function secondsToMs(value: unknown) {
+  const number = numberOrUndefined(value);
+  return number === undefined ? undefined : Math.round(number * 1000);
+}
+
+function numberOrUndefined(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function desktopSignalingUrl(session: PairingPayload) {

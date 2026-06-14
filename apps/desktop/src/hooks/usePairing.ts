@@ -3,8 +3,10 @@ import { encodePairingPayload } from "@lensbridge/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getPairingSession, regeneratePairingSession } from "../lib/api";
 import { createQrDataUrl } from "../lib/qr";
+import { useAppPreferences } from "../store/appStore";
 
 export function usePairing() {
+  const { preferences } = useAppPreferences();
   const [session, setSession] = useState<PairingPayload | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -14,8 +16,12 @@ export function usePairing() {
   const phoneUrl = useMemo(() => {
     if (!session) return null;
     const encoded = encodePairingPayload(session);
-    return session.phoneUrl ?? `http://${session.host}:5174/?pairing=${encoded}`;
-  }, [session]);
+    const url = new URL(session.phoneUrl ?? `http://${session.host}:5174/`);
+    url.searchParams.set("pairing", encoded);
+    url.searchParams.set("quality", preferences.defaultQuality);
+    url.searchParams.set("autoReconnect", String(preferences.autoReconnect));
+    return url.toString();
+  }, [preferences.autoReconnect, preferences.defaultQuality, session]);
 
   const refresh = useCallback(async () => {
     setLoading(true);

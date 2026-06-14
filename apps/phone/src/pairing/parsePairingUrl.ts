@@ -1,4 +1,10 @@
-import { decodePairingPayload, isPairingPayload, type PairingPayload } from "@lensbridge/shared";
+import {
+  decodePairingPayload,
+  isPairingPayload,
+  isQualityProfileId,
+  type PairingPayload,
+  type QualityProfileId
+} from "@lensbridge/shared";
 
 export interface ParsePairingResult {
   payload: PairingPayload | null;
@@ -7,6 +13,15 @@ export interface ParsePairingResult {
 
 export function parsePairingFromLocation(location: Location): ParsePairingResult {
   return parsePairingUrl(location.search);
+}
+
+export function parseQualityFromLocation(location: Location): QualityProfileId | null {
+  const quality = new URLSearchParams(location.search).get("quality");
+  return quality && isQualityProfileId(quality) ? quality : null;
+}
+
+export function parseAutoReconnectFromLocation(location: Location): boolean {
+  return new URLSearchParams(location.search).get("autoReconnect") !== "false";
 }
 
 export function parsePairingUrl(search: string): ParsePairingResult {

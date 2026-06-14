@@ -5,9 +5,10 @@ interface ToggleProps {
   description?: string;
   checked: boolean;
   disabled?: boolean;
+  onChange?: (checked: boolean) => void;
 }
 
-export function Toggle({ label, description, checked, disabled }: ToggleProps) {
+export function Toggle({ label, description, checked, disabled, onChange }: ToggleProps) {
   return (
     <label
       className={clsx(
@@ -19,7 +20,14 @@ export function Toggle({ label, description, checked, disabled }: ToggleProps) {
         <span className="block text-sm font-medium text-white">{label}</span>
         {description ? <span className="mt-1 block text-xs leading-5 text-slate-400">{description}</span> : null}
       </span>
-      <input className="h-5 w-5 accent-brand" type="checkbox" checked={checked} disabled={disabled} readOnly />
+      <input
+        className="h-5 w-5 accent-brand"
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange?.(event.target.checked)}
+        readOnly={!onChange}
+      />
     </label>
   );
 }

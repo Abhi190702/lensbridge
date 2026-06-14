@@ -19,6 +19,7 @@ export function useCamera(quality: QualityProfileId): UseCameraResult {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const lastCameraConfig = useRef({ quality, facingMode });
 
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -33,6 +34,7 @@ export function useCamera(quality: QualityProfileId): UseCameraResult {
       stop();
       const next = await navigator.mediaDevices.getUserMedia(constraintsForQuality(quality, facingMode));
       streamRef.current = next;
+      lastCameraConfig.current = { quality, facingMode };
       setStream(next);
     } catch (err) {
       setError(cameraErrorMessage(err));
@@ -47,7 +49,28 @@ export function useCamera(quality: QualityProfileId): UseCameraResult {
 
   useEffect(() => {
     if (!streamRef.current) return;
-    void start();
+
+    const previous = lastCameraConfig.current;
+    const facingModeChanged = previous.facingMode !== facingMode;
+    lastCameraConfig.current = { quality, facingMode };
+
+    if (facingModeChanged) {
+      void start();
+      return;
+    }
+
+    const [videoTrack] = streamRef.current.getVideoTracks();
+    if (!videoTrack) {
+      void start();
+      return;
+    }
+
+    const videoConstraints = constraintsForQuality(quality, facingMode).video;
+    if (!videoConstraints || typeof videoConstraints === "boolean") return;
+
+    void videoTrack.applyConstraints(videoConstraints).catch(() => {
+      void start();
+    });
   }, [facingMode, quality, start]);
 
   useEffect(() => stop, [stop]);

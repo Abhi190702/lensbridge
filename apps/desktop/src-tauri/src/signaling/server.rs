@@ -147,6 +147,11 @@ async fn handle_socket(
                         eprintln!("Dropped signaling envelope with mismatched session id.");
                         continue;
                     }
+                    if let Some(ack) =
+                        hello_ack_envelope(&state, &envelope, role, session_id.as_str())
+                    {
+                        state.hub.broadcast(ack);
+                    }
 
                     envelope.from = role;
                     envelope.client_id = Some(client_id.clone());
@@ -173,6 +178,68 @@ fn envelope_session_id(envelope: &SignalingEnvelope) -> Option<&str> {
         .message
         .get("sessionId")
         .and_then(|value| value.as_str())
+}
+
+fn hello_ack_envelope(
+    state: &SignalingServer,
+    envelope: &SignalingEnvelope,
+    role: SignalingRole,
+    session_id: &str,
+) -> Option<SignalingEnvelope> {
+    if envelope
+        .message
+        .get("type")
+        .and_then(|value| value.as_str())
+        != Some("hello")
+    {
+        return None;
+    }
+
+    let token = envelope
+        .message
+        .get("token")
+        .and_then(|value| value.as_str());
+    let message_role = envelope
+        .message
+        .get("role")
+        .and_then(|value| value.as_str());
+    let accepted = token.is_some_and(|token| state.session_manager.validate(session_id, token))
+        && message_role == Some(role_name(role));
+
+    Some(SignalingEnvelope {
+        from: opposite_role(role),
+        to: Some(role),
+        message: if accepted {
+            json!({
+                "type": "hello-ack",
+                "sessionId": session_id,
+                "accepted": true
+            })
+        } else {
+            json!({
+                "type": "hello-ack",
+                "sessionId": session_id,
+                "accepted": false,
+                "reason": "LensBridge hello did not match the authenticated pairing session."
+            })
+        },
+        sent_at: chrono::Utc::now().to_rfc3339(),
+        client_id: None,
+    })
+}
+
+fn opposite_role(role: SignalingRole) -> SignalingRole {
+    match role {
+        SignalingRole::Desktop => SignalingRole::Phone,
+        SignalingRole::Phone => SignalingRole::Desktop,
+    }
+}
+
+fn role_name(role: SignalingRole) -> &'static str {
+    match role {
+        SignalingRole::Desktop => "desktop",
+        SignalingRole::Phone => "phone",
+    }
 }
 
 #[cfg(test)]
@@ -204,5 +271,76 @@ mod tests {
         };
 
         assert_eq!(envelope_session_id(&envelope), None);
+    }
+
+    #[test]
+    fn accepts_valid_hello_message() {
+        let session_manager =
+            Arc::new(SessionManager::new("dev".into(), "127.0.0.1".into(), 48173));
+        let payload = session_manager.current_payload();
+        let server = SignalingServer::new(48173, session_manager, SignalingHub::new());
+        let envelope = SignalingEnvelope {
+            from: SignalingRole::Phone,
+            to: Some(SignalingRole::Desktop),
+            message: json!({
+                "type": "hello",
+                "role": "phone",
+                "sessionId": payload.session_id,
+                "token": payload.token
+            }),
+            sent_at: "2026-06-13T00:00:00.000Z".to_string(),
+            client_id: None,
+        };
+
+        let ack = hello_ack_envelope(
+            &server,
+            &envelope,
+            SignalingRole::Phone,
+            &payload.session_id,
+        )
+        .expect("hello should produce ack");
+
+        assert_eq!(ack.to, Some(SignalingRole::Phone));
+        assert_eq!(
+            ack.message
+                .get("accepted")
+                .and_then(|value| value.as_bool()),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn rejects_hello_with_wrong_token() {
+        let session_manager =
+            Arc::new(SessionManager::new("dev".into(), "127.0.0.1".into(), 48173));
+        let payload = session_manager.current_payload();
+        let server = SignalingServer::new(48173, session_manager, SignalingHub::new());
+        let envelope = SignalingEnvelope {
+            from: SignalingRole::Phone,
+            to: Some(SignalingRole::Desktop),
+            message: json!({
+                "type": "hello",
+                "role": "phone",
+                "sessionId": payload.session_id,
+                "token": "wrong"
+            }),
+            sent_at: "2026-06-13T00:00:00.000Z".to_string(),
+            client_id: None,
+        };
+
+        let ack = hello_ack_envelope(
+            &server,
+            &envelope,
+            SignalingRole::Phone,
+            &payload.session_id,
+        )
+        .expect("hello should produce ack");
+
+        assert_eq!(
+            ack.message
+                .get("accepted")
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
     }
 }

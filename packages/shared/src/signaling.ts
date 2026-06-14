@@ -47,6 +47,11 @@ export type SignalingMessage =
       metrics: Partial<StreamMetrics>;
     }
   | {
+      type: "ice-restart-request";
+      sessionId: string;
+      reason?: string;
+    }
+  | {
       type: "error";
       sessionId?: string;
       code: string;

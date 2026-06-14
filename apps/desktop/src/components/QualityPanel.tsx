@@ -1,4 +1,4 @@
-import { qualityProfiles } from "@lensbridge/shared";
+import { selectableQualityProfiles } from "@lensbridge/shared";
 import { Card } from "./ui/Card";
 
 export function QualityPanel() {
@@ -9,7 +9,7 @@ export function QualityPanel() {
         <p className="mt-1 text-sm text-slate-400">Phone camera constraints used for the WebRTC sender.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {qualityProfiles.map((profile) => (
+        {selectableQualityProfiles.map((profile) => (
           <div key={profile.id} className="border border-line bg-white/[0.025] p-3">
             <div className="text-sm font-medium text-white">{profile.label}</div>
             <div className="mt-1 text-xs text-slate-400">

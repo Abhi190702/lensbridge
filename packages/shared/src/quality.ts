@@ -1,4 +1,4 @@
-export type QualityProfileId = "low-latency" | "balanced" | "high-quality" | "battery-saver" | "custom";
+export type QualityProfileId = "low-latency" | "balanced" | "high-quality" | "battery-saver";
 
 export interface QualityProfile {
   id: QualityProfileId;
@@ -46,10 +46,15 @@ export const qualityProfiles: QualityProfile[] = [
     fps: 24,
     bitrateKbps: 1200,
     facingMode: "environment"
-  },
-  { id: "custom", label: "Custom", width: 1280, height: 720, fps: 30, facingMode: "environment" }
+  }
 ];
+
+export const selectableQualityProfiles = qualityProfiles;
 
 export function getQualityProfile(id: QualityProfileId): QualityProfile {
   return qualityProfiles.find((profile) => profile.id === id) ?? qualityProfiles[1];
+}
+
+export function isQualityProfileId(value: string): value is QualityProfileId {
+  return qualityProfiles.some((profile) => profile.id === value);
 }

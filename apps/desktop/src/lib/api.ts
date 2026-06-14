@@ -93,7 +93,7 @@ export async function publishUnityCaptureFrame(frame: UnityCaptureFramePayload):
   };
 }
 
-function encodeUnityCaptureFrame(frame: UnityCaptureFramePayload) {
+function encodeUnityCaptureFrame(frame: UnityCaptureFramePayload): Uint8Array {
   const headerBytes = 9;
   const payload = new Uint8Array(headerBytes + frame.rgbaBytes.byteLength);
   const header = new DataView(payload.buffer, payload.byteOffset, headerBytes);

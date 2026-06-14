@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encodePairingPayload, type PairingPayload } from "@lensbridge/shared";
-import { parsePairingUrl } from "./parsePairingUrl";
+import { parseAutoReconnectFromLocation, parsePairingUrl, parseQualityFromLocation } from "./parsePairingUrl";
 
 const payload: PairingPayload = {
   app: "LensBridge",
@@ -28,5 +28,19 @@ describe("parsePairingUrl", () => {
 
   it("returns an error for invalid payloads", () => {
     expect(parsePairingUrl("?pairing=bad").error).toBeTruthy();
+  });
+
+  it("reads optional quality and reconnect URL settings", () => {
+    const location = { search: "?quality=low-latency&autoReconnect=false" } as Location;
+
+    expect(parseQualityFromLocation(location)).toBe("low-latency");
+    expect(parseAutoReconnectFromLocation(location)).toBe(false);
+  });
+
+  it("ignores invalid quality and defaults reconnect on", () => {
+    const location = { search: "?quality=made-up" } as Location;
+
+    expect(parseQualityFromLocation(location)).toBeNull();
+    expect(parseAutoReconnectFromLocation(location)).toBe(true);
   });
 });

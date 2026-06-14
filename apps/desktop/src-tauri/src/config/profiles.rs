@@ -1,1 +1,1 @@
-pub const QUALITY_PROFILES: &[&str] = &["low-latency", "balanced", "high-quality", "battery-saver", "custom"];
+pub const QUALITY_PROFILES: &[&str] = &["low-latency", "balanced", "high-quality", "battery-saver"];

@@ -10,6 +10,7 @@ import { readOutboundMetrics, type OutboundMetricsSample } from "./metrics";
 
 export interface PhonePeer {
   stop: () => void;
+  updateQuality: (quality: QualityProfileId) => Promise<void>;
 }
 
 export interface StartPhonePeerOptions {
@@ -19,6 +20,8 @@ export interface StartPhonePeerOptions {
   onStatus: (status: string) => void;
   onMetrics: (metrics: Partial<StreamMetrics>) => void;
   onRemoteDisconnect?: () => void;
+  onError?: (message: string) => void;
+  onQualityUpdated?: () => void;
 }
 
 export async function startPhonePeer({
@@ -27,13 +30,17 @@ export async function startPhonePeer({
   quality,
   onStatus,
   onMetrics,
-  onRemoteDisconnect
+  onRemoteDisconnect,
+  onError,
+  onQualityUpdated
 }: StartPhonePeerOptions): Promise<PhonePeer> {
   const client = new SignalingClient(pairing, "phone");
   const peer = new RTCPeerConnection({ iceServers: [] });
   let metricsTimer = 0;
   let lastMetricsSample: OutboundMetricsSample | null = null;
   let stopped = false;
+  let activeQuality = quality;
+  const videoSenders: RTCRtpSender[] = [];
 
   for (const track of stream.getTracks()) {
     if (track.kind === "video") {
@@ -41,6 +48,7 @@ export async function startPhonePeer({
     }
     const sender = peer.addTrack(track, stream);
     if (track.kind === "video") {
+      videoSenders.push(sender);
       await configureVideoSender(sender, quality);
     }
   }
@@ -58,6 +66,13 @@ export async function startPhonePeer({
   client.onMessage(async (message: SignalingMessage) => {
     if (stopped) return;
 
+    if (message.type === "hello-ack" && !message.accepted) {
+      const reason = message.reason ?? "LensBridge pairing was rejected.";
+      onError?.(reason);
+      onStatus("failed");
+      stopPeer(false);
+      return;
+    }
     if (message.type === "answer") {
       await peer.setRemoteDescription(message.sdp);
       onStatus("connected");
@@ -70,12 +85,13 @@ export async function startPhonePeer({
       onRemoteDisconnect?.();
       onStatus("disconnected");
     }
+    if (message.type === "ice-restart-request") {
+      await createAndSendOffer(true);
+    }
   });
 
   await client.connect();
-  const offer = await peer.createOffer();
-  await peer.setLocalDescription(offer);
-  client.send({ type: "offer", sessionId: pairing.sessionId, sdp: offer });
+  await createAndSendOffer(false);
   client.send({ type: "stream-started", sessionId: pairing.sessionId });
 
   metricsTimer = window.setInterval(async () => {
@@ -100,7 +116,28 @@ export async function startPhonePeer({
     client.close();
   }
 
+  async function createAndSendOffer(iceRestart: boolean) {
+    if (iceRestart) {
+      peer.restartIce();
+    }
+
+    const offer = await peer.createOffer({ iceRestart });
+    const profile = getQualityProfile(activeQuality);
+    const cappedOffer = {
+      type: offer.type,
+      sdp: applyVideoBandwidthLimit(offer.sdp ?? "", profile.bitrateKbps ?? 3500)
+    } satisfies RTCSessionDescriptionInit;
+
+    await peer.setLocalDescription(cappedOffer);
+    client.send({ type: "offer", sessionId: pairing.sessionId, sdp: cappedOffer });
+  }
+
   return {
+    async updateQuality(nextQuality: QualityProfileId) {
+      activeQuality = nextQuality;
+      await Promise.all(videoSenders.map((sender) => configureVideoSender(sender, nextQuality)));
+      onQualityUpdated?.();
+    },
     stop() {
       stopPeer(true);
     }
@@ -130,4 +167,24 @@ async function configureVideoSender(sender: RTCRtpSender, quality: QualityProfil
   } catch {
     // Some mobile browsers expose read-only sender parameters. The camera constraints still carry the quality target.
   }
+}
+
+function applyVideoBandwidthLimit(sdp: string, bitrateKbps: number) {
+  const lines = sdp.split("\r\n");
+  const videoLineIndex = lines.findIndex((line) => line.startsWith("m=video"));
+  if (videoLineIndex === -1) return sdp;
+
+  const nextMediaLineIndex = lines.findIndex((line, index) => index > videoLineIndex && line.startsWith("m="));
+  const insertAt = nextMediaLineIndex === -1 ? lines.length : nextMediaLineIndex;
+  const existingBandwidthIndex = lines.findIndex(
+    (line, index) => index > videoLineIndex && index < insertAt && (line.startsWith("b=AS:") || line.startsWith("b=TIAS:"))
+  );
+
+  if (existingBandwidthIndex !== -1) {
+    lines[existingBandwidthIndex] = `b=AS:${bitrateKbps}`;
+  } else {
+    lines.splice(videoLineIndex + 1, 0, `b=AS:${bitrateKbps}`);
+  }
+
+  return lines.join("\r\n");
 }

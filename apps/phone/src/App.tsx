@@ -1,7 +1,11 @@
 import type { PairingPayload, QualityProfileId } from "@lensbridge/shared";
 import { useMemo, useState } from "react";
 import { useCamera } from "./camera/useCamera";
-import { parsePairingFromLocation } from "./pairing/parsePairingUrl";
+import {
+  parseAutoReconnectFromLocation,
+  parsePairingFromLocation,
+  parseQualityFromLocation
+} from "./pairing/parsePairingUrl";
 import { ConnectPage } from "./pages/ConnectPage";
 import { ErrorPage } from "./pages/ErrorPage";
 import { PermissionPage } from "./pages/PermissionPage";
@@ -10,8 +14,10 @@ import { browserSupport } from "./utils/browserSupport";
 
 export default function App() {
   const initialPayload = useMemo(() => parsePairingFromLocation(window.location), []);
+  const initialQuality = useMemo(() => parseQualityFromLocation(window.location) ?? "balanced", []);
+  const autoReconnect = useMemo(() => parseAutoReconnectFromLocation(window.location), []);
   const [pairing, setPairing] = useState<PairingPayload | null>(initialPayload.payload);
-  const [quality, setQuality] = useState<QualityProfileId>("balanced");
+  const [quality, setQuality] = useState<QualityProfileId>(initialQuality);
   const camera = useCamera(quality);
   const support = browserSupport();
 
@@ -27,5 +33,13 @@ export default function App() {
     return <PermissionPage pairing={pairing} camera={camera} quality={quality} onQualityChange={setQuality} />;
   }
 
-  return <StreamPage pairing={pairing} camera={camera} quality={quality} onQualityChange={setQuality} />;
+  return (
+    <StreamPage
+      pairing={pairing}
+      camera={camera}
+      quality={quality}
+      autoReconnect={autoReconnect}
+      onQualityChange={setQuality}
+    />
+  );
 }

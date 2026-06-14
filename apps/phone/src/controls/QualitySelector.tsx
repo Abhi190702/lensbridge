@@ -1,4 +1,4 @@
-import { qualityProfiles, type QualityProfileId } from "@lensbridge/shared";
+import { selectableQualityProfiles, type QualityProfileId } from "@lensbridge/shared";
 
 interface QualitySelectorProps {
   value: QualityProfileId;
@@ -14,7 +14,7 @@ export function QualitySelector({ value, onChange }: QualitySelectorProps) {
         value={value}
         onChange={(event) => onChange(event.target.value as QualityProfileId)}
       >
-        {qualityProfiles.map((profile) => (
+        {selectableQualityProfiles.map((profile) => (
           <option key={profile.id} value={profile.id}>
             {profile.label}
           </option>
