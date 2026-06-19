@@ -150,7 +150,15 @@ async fn handle_socket(
                     if let Some(ack) =
                         hello_ack_envelope(&state, &envelope, role, session_id.as_str())
                     {
+                        let accepted = ack
+                            .message
+                            .get("accepted")
+                            .and_then(|value| value.as_bool())
+                            .unwrap_or(false);
                         state.hub.broadcast(ack);
+                        if !accepted {
+                            continue;
+                        }
                     }
 
                     envelope.from = role;

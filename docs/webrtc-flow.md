@@ -5,13 +5,18 @@ Phone:
 1. Capture camera with `getUserMedia`.
 2. Create `RTCPeerConnection`.
 3. Add video tracks.
-4. Create offer.
-5. Send offer through signaling.
-6. Receive answer and ICE candidates.
+4. Connect to signaling and send `hello` with device identity.
+5. Wait for desktop `pairing-approved`.
+6. Create offer with the selected quality bandwidth cap.
+7. Send offer through signaling.
+8. Receive answer and ICE candidates.
 
 Desktop:
 
 1. Connect to signaling.
-2. Receive offer.
-3. Create answer.
-4. Render remote track in the webview.
+2. Receive the phone `hello`.
+3. Auto-approve trusted devices or ask the desktop user to approve/reject unknown devices.
+4. Reject offers that arrive before approval.
+5. Receive the approved offer.
+6. Create answer.
+7. Poll inbound WebRTC stats while rendering the remote track in the webview.

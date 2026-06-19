@@ -19,11 +19,11 @@ sequenceDiagram
     Desktop->>Desktop: show approve/reject prompt
     Desktop->>Phone: pairing-approved or pairing-rejected
   end
-  Phone->>Desktop: offer only after approval
+  Phone->>Desktop: offer(deviceId) only after approval
   Desktop->>Phone: answer
 ```
 
-Unknown phones cannot start WebRTC until the desktop approves them. The desktop also rejects `offer` messages that arrive before approval.
+Unknown phones cannot start WebRTC until the desktop approves them. The desktop also rejects `offer` messages that arrive before approval or do not match the approved phone device ID. Phone-side ICE candidates, metrics, and stream lifecycle messages are bound to the same approved device ID.
 
 ## Pairing Code
 

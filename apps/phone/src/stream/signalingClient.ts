@@ -20,16 +20,7 @@ export class SignalingClient {
     return new Promise((resolve, reject) => {
       const socket = new WebSocket(url);
       this.socket = socket;
-      socket.onopen = () => {
-        this.send({
-          type: "hello",
-          role: this.role,
-          sessionId: this.pairing.sessionId,
-          token: this.pairing.token,
-          deviceName: navigator.userAgent
-        });
-        resolve();
-      };
+      socket.onopen = () => resolve();
       socket.onerror = () => reject(new Error("Could not connect to LensBridge Desktop signaling server."));
       socket.onmessage = (event) => {
         const envelope = JSON.parse(String(event.data)) as SignalingEnvelope;

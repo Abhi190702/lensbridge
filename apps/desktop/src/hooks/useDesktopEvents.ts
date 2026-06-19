@@ -215,13 +215,14 @@ export function useDesktopReceiver(session: PairingPayload | null) {
             return;
           }
           if (message.type === "offer") {
-            if (!approvedDeviceIdRef.current) {
+            if (!isApprovedDeviceMessage(message.deviceId, approvedDeviceIdRef.current)) {
               send({
                 type: "pairing-rejected",
                 sessionId: session.sessionId,
+                deviceId: message.deviceId,
                 reason: "Desktop approval is required before streaming."
               });
-              setError("Blocked a phone stream attempt that was not approved.");
+              setError("Blocked a phone stream attempt that was not approved for this device.");
               setStatus("pairing");
               return;
             }
@@ -234,13 +235,17 @@ export function useDesktopReceiver(session: PairingPayload | null) {
             send({ type: "answer", sessionId: session.sessionId, sdp: answer });
           }
           if (message.type === "ice-candidate") {
+            if (!isApprovedDeviceMessage(message.deviceId, approvedDeviceIdRef.current)) return;
             const peer = ensurePeer();
             await peer.addIceCandidate(message.candidate);
           }
           if (message.type === "metrics") {
+            if (!isApprovedDeviceMessage(message.deviceId, approvedDeviceIdRef.current)) return;
             setMetrics((current) => ({ ...current, ...message.metrics }));
           }
           if (message.type === "stream-stopped" || message.type === "disconnect") {
+            if (!isApprovedDeviceMessage(message.deviceId, approvedDeviceIdRef.current)) return;
+            approvedDeviceIdRef.current = null;
             closePeer();
             setStatus("disconnected");
           }
@@ -439,6 +444,10 @@ function secondsToMs(value: unknown) {
 
 function numberOrUndefined(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function isApprovedDeviceMessage(messageDeviceId: string | undefined, approvedDeviceId: string | null) {
+  return Boolean(approvedDeviceId && messageDeviceId && messageDeviceId === approvedDeviceId);
 }
 
 function desktopSignalingUrl(session: PairingPayload) {

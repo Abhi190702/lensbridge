@@ -11,6 +11,7 @@
 9. Unknown phones are shown in the desktop approval prompt.
 10. The user approves once, trusts the device, or rejects the request.
 11. Phone sends the WebRTC offer only after `pairing-approved`.
+12. Desktop accepts phone media messages only when their `deviceId` matches the approved request.
 
 ```mermaid
 sequenceDiagram

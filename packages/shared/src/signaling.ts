@@ -35,6 +35,7 @@ export type SignalingMessage =
   | {
       type: "offer";
       sessionId: string;
+      deviceId?: string;
       sdp: RTCSessionDescriptionInit;
     }
   | {
@@ -45,21 +46,25 @@ export type SignalingMessage =
   | {
       type: "ice-candidate";
       sessionId: string;
+      deviceId?: string;
       candidate: RTCIceCandidateInit;
     }
   | {
       type: "stream-started";
       sessionId: string;
+      deviceId?: string;
       metrics?: Partial<StreamMetrics>;
     }
   | {
       type: "stream-stopped";
       sessionId: string;
+      deviceId?: string;
       reason?: string;
     }
   | {
       type: "metrics";
       sessionId: string;
+      deviceId?: string;
       metrics: Partial<StreamMetrics>;
     }
   | {
@@ -77,6 +82,7 @@ export type SignalingMessage =
   | {
       type: "disconnect";
       sessionId: string;
+      deviceId?: string;
       reason?: string;
     };
 

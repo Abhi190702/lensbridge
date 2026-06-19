@@ -59,7 +59,12 @@ export async function startPhonePeer({
 
   peer.onicecandidate = (event) => {
     if (event.candidate) {
-      client.send({ type: "ice-candidate", sessionId: pairing.sessionId, candidate: event.candidate.toJSON() });
+      client.send({
+        type: "ice-candidate",
+        sessionId: pairing.sessionId,
+        deviceId: identity.deviceId,
+        candidate: event.candidate.toJSON()
+      });
     }
   };
 
@@ -80,7 +85,7 @@ export async function startPhonePeer({
     if (message.type === "pairing-approved") {
       onStatus(message.trusted ? "trusted-approved" : "approved");
       await createAndSendOffer(false);
-      client.send({ type: "stream-started", sessionId: pairing.sessionId });
+      client.send({ type: "stream-started", sessionId: pairing.sessionId, deviceId: identity.deviceId });
     }
     if (message.type === "pairing-rejected") {
       onError?.(message.reason);
@@ -124,7 +129,7 @@ export async function startPhonePeer({
     const { metrics, sample } = await readOutboundMetrics(peer, lastMetricsSample);
     lastMetricsSample = sample;
     onMetrics(metrics);
-    client.send({ type: "metrics", sessionId: pairing.sessionId, metrics });
+    client.send({ type: "metrics", sessionId: pairing.sessionId, deviceId: identity.deviceId, metrics });
   }, 1500);
 
   function stopPeer(notifyDesktop: boolean) {
@@ -134,7 +139,12 @@ export async function startPhonePeer({
     window.clearInterval(metricsTimer);
 
     if (notifyDesktop) {
-      client.send({ type: "stream-stopped", sessionId: pairing.sessionId, reason: "Phone stopped stream" });
+      client.send({
+        type: "stream-stopped",
+        sessionId: pairing.sessionId,
+        deviceId: identity.deviceId,
+        reason: "Phone stopped stream"
+      });
     }
 
     peer.close();
@@ -154,7 +164,7 @@ export async function startPhonePeer({
     } satisfies RTCSessionDescriptionInit;
 
     await peer.setLocalDescription(cappedOffer);
-    client.send({ type: "offer", sessionId: pairing.sessionId, sdp: cappedOffer });
+    client.send({ type: "offer", sessionId: pairing.sessionId, deviceId: identity.deviceId, sdp: cappedOffer });
   }
 
   return {
