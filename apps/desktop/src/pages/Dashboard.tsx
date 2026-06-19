@@ -45,7 +45,10 @@ export function Dashboard({ pairing, receiver, directCamera, onOpenObsOutput, on
           phoneUrl={pairing.phoneUrl}
           expiresInSeconds={pairing.expiresInSeconds}
           loading={pairing.loading}
+          pendingRequest={receiver.pendingPairingRequest}
           onRegenerate={pairing.regenerate}
+          onApprove={(trustThisDevice) => void receiver.approvePairing(trustThisDevice)}
+          onReject={() => void receiver.rejectPairing()}
         />
       )}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">

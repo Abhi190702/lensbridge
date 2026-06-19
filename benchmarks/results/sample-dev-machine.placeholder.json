@@ -1,0 +1,38 @@
+[
+  {
+    "schemaVersion": 1,
+    "measurementStatus": "template-not-run",
+    "scenario": {
+      "id": "720p30-10m-consumer-open",
+      "resolution": "1280x720",
+      "targetFps": 30,
+      "durationSeconds": 600,
+      "directShowConsumerOpen": true,
+      "obsFallback": false
+    },
+    "machine": {
+      "host": "PLACEHOLDER",
+      "os": "PLACEHOLDER",
+      "arch": "PLACEHOLDER",
+      "cpu": "PLACEHOLDER",
+      "memoryGb": 0,
+      "node": "PLACEHOLDER",
+      "rust": "PLACEHOLDER",
+      "tauri": "PLACEHOLDER"
+    },
+    "run": {
+      "startedAt": "2026-06-19T00:00:00.000Z",
+      "durationSeconds": 600,
+      "actualDeliveredFps": null,
+      "capturedFrames": null,
+      "deliveredFrames": null,
+      "droppedFrames": null,
+      "averageFrameSendMs": null,
+      "p95FrameSendMs": null,
+      "averageRustWriteMs": null,
+      "directShowConsumerOpen": true,
+      "obsFallback": false,
+      "notes": "Schema example only. Do not treat this as a real LensBridge performance result."
+    }
+  }
+]

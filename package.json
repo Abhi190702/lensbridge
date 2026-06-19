@@ -12,6 +12,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "format": "prettier --write .",
+    "benchmark:frame-pump": "node --experimental-strip-types scripts/benchmark-frame-pump.ts",
     "clean": "turbo clean",
     "dev:phone": "pnpm --filter @lensbridge/phone dev",
     "dev:desktop": "pnpm --filter @lensbridge/desktop tauri dev",

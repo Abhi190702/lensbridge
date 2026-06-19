@@ -1,4 +1,4 @@
-import type { PairingPayload } from "@lensbridge/shared";
+import type { PairingPayload, SecurityAuditEvent, TrustedDeviceRecord } from "@lensbridge/shared";
 import { invoke } from "@tauri-apps/api/core";
 
 interface RuntimeStatus {
@@ -28,6 +28,14 @@ export interface UnityCapturePublishResult {
   width: number;
   height: number;
   message: string;
+  rustFrameWriteMicros?: number;
+}
+
+export interface TrustDeviceRequest {
+  deviceId: string;
+  label: string;
+  platform?: string;
+  userAgent?: string;
 }
 
 function isTauriRuntime() {
@@ -63,6 +71,74 @@ export async function disconnectSession(): Promise<void> {
   if (isTauriRuntime()) {
     await invoke("disconnect_session");
   }
+}
+
+export async function listTrustedDevices(): Promise<TrustedDeviceRecord[]> {
+  if (isTauriRuntime()) {
+    return invoke<TrustedDeviceRecord[]>("list_trusted_devices");
+  }
+  return readBrowserTrustedDevices();
+}
+
+export async function isTrustedDevice(deviceId: string): Promise<boolean> {
+  if (isTauriRuntime()) {
+    return invoke<boolean>("is_trusted_device", { deviceId });
+  }
+  return readBrowserTrustedDevices().some((device) => device.deviceId === deviceId);
+}
+
+export async function trustDevice(request: TrustDeviceRequest): Promise<TrustedDeviceRecord> {
+  if (isTauriRuntime()) {
+    return invoke<TrustedDeviceRecord>("trust_device", { request });
+  }
+
+  const now = new Date().toISOString();
+  const record: TrustedDeviceRecord = {
+    deviceId: request.deviceId,
+    label: request.label,
+    platform: request.platform,
+    userAgent: request.userAgent,
+    fingerprint: request.deviceId.slice(0, 8),
+    trustedAt: now,
+    lastSeenAt: now
+  };
+  const devices = readBrowserTrustedDevices().filter((device) => device.deviceId !== request.deviceId);
+  writeBrowserTrustedDevices([...devices, record]);
+  return record;
+}
+
+export async function markTrustedDeviceSeen(deviceId: string): Promise<void> {
+  if (isTauriRuntime()) {
+    await invoke("mark_trusted_device_seen", { deviceId });
+  }
+}
+
+export async function revokeTrustedDevice(deviceId: string): Promise<boolean> {
+  if (isTauriRuntime()) {
+    return invoke<boolean>("revoke_trusted_device", { deviceId });
+  }
+  const devices = readBrowserTrustedDevices();
+  writeBrowserTrustedDevices(devices.filter((device) => device.deviceId !== deviceId));
+  return devices.some((device) => device.deviceId === deviceId);
+}
+
+export async function recordSecurityAuditEvent(
+  kind: SecurityAuditEvent["kind"],
+  message: string,
+  deviceId?: string,
+  label?: string
+): Promise<SecurityAuditEvent | null> {
+  if (isTauriRuntime()) {
+    return invoke<SecurityAuditEvent>("record_security_audit_event", { kind, deviceId, label, message });
+  }
+  return null;
+}
+
+export async function listSecurityAuditEvents(): Promise<SecurityAuditEvent[]> {
+  if (isTauriRuntime()) {
+    return invoke<SecurityAuditEvent[]>("list_security_audit_events");
+  }
+  return [];
 }
 
 export async function getObsVirtualCameraStatus(): Promise<ObsVirtualCameraStatus> {
@@ -128,4 +204,19 @@ function createBrowserMockSession(): PairingPayload {
     secure: false,
     signalingUrl: `ws://${host}:${port}/signal`
   };
+}
+
+const BROWSER_TRUSTED_DEVICES_KEY = "lensbridge.desktop.trustedDevices.dev.v1";
+
+function readBrowserTrustedDevices() {
+  try {
+    const raw = localStorage.getItem(BROWSER_TRUSTED_DEVICES_KEY);
+    return raw ? (JSON.parse(raw) as TrustedDeviceRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeBrowserTrustedDevices(devices: TrustedDeviceRecord[]) {
+  localStorage.setItem(BROWSER_TRUSTED_DEVICES_KEY, JSON.stringify(devices));
 }

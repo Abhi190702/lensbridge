@@ -1,8 +1,8 @@
-# OBS Fallback Workflow
+# Power-User OBS Fallback Workflow
 
 On Windows, try `LensBridge Camera` first after installing the DirectShow driver with `pnpm install:windows-camera`.
 
-Use this OBS workflow when the DirectShow path is not installed or a target app refuses virtual DirectShow devices.
+Use this OBS workflow only when the DirectShow path is not installed, a target app refuses virtual DirectShow devices, or you explicitly want OBS filters/scenes.
 
 ```text
 Phone -> LensBridge Desktop -> LensBridge OBS Output -> OBS Window Capture -> OBS Virtual Camera -> browser/app

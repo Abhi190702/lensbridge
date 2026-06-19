@@ -12,3 +12,4 @@ coverage/
 !.env.example
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
+benchmarks/results/*.local.json

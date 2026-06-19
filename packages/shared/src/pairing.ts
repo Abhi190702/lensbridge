@@ -52,3 +52,20 @@ export function decodePairingPayload(encoded: string): PairingPayload {
 
   return parsed;
 }
+
+export function createPairingCode(payload: Pick<PairingPayload, "sessionId" | "token">, deviceId: string): string {
+  const material = `${payload.sessionId}:${payload.token}:${deviceId}`;
+  const hash = fnv1a32(material);
+  return String(hash % 1_000_000).padStart(6, "0");
+}
+
+function fnv1a32(value: string) {
+  let hash = 0x811c9dc5;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  return hash >>> 0;
+}

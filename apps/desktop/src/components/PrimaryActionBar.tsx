@@ -14,7 +14,7 @@ export function PrimaryActionBar({ streamReady, onOpenObsOutput, onOpenGuide, on
     <div className="flex flex-wrap items-center gap-2 border border-line bg-panel p-2">
       <Button onClick={onOpenObsOutput} disabled={!streamReady}>
         <MonitorUp className="h-4 w-4" />
-        OBS fallback view
+        OBS fallback
       </Button>
       <Button variant="secondary" onClick={onOpenGuide}>
         <BookOpen className="h-4 w-4" />

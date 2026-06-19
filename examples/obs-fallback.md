@@ -1,6 +1,6 @@
-# OBS Fallback
+# Power-User OBS Fallback
 
-Use OBS Virtual Camera when an app needs LensBridge to appear in a normal camera picker.
+Use OBS Virtual Camera only when the native `LensBridge Camera` path is unavailable, rejected by a target app, or you want OBS scenes/filters.
 
 1. Connect your phone in LensBridge.
 2. Click Open OBS Output.

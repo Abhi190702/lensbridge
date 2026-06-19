@@ -1,5 +1,14 @@
-import type { ConnectionStatus, PairingPayload, SignalingEnvelope, SignalingMessage, StreamMetrics } from "@lensbridge/shared";
+import {
+  createPairingCode,
+  type ConnectionStatus,
+  type PairingApprovalRequest,
+  type PairingPayload,
+  type SignalingEnvelope,
+  type SignalingMessage,
+  type StreamMetrics
+} from "@lensbridge/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isTrustedDevice, markTrustedDeviceSeen, recordSecurityAuditEvent, trustDevice } from "../lib/api";
 
 const SOCKET_RETRY_WINDOW_MS = 15000;
 const SOCKET_RETRY_DELAY_MS = 450;
@@ -16,10 +25,14 @@ export function useDesktopReceiver(session: PairingPayload | null) {
   const [status, setStatus] = useState<ConnectionStatus>("waiting");
   const [metrics, setMetrics] = useState<Partial<StreamMetrics>>({});
   const [error, setError] = useState<string | null>(null);
+  const [pendingPairingRequest, setPendingPairingRequest] = useState<PairingApprovalRequest | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const statsTimerRef = useRef<number | null>(null);
   const inboundStatsSampleRef = useRef<InboundStatsSample | null>(null);
+  const sendRef = useRef<((message: SignalingMessage) => void) | null>(null);
+  const approvedDeviceIdRef = useRef<string | null>(null);
+  const pendingPairingRequestRef = useRef<PairingApprovalRequest | null>(null);
 
   const stopStatsPolling = useCallback(() => {
     if (statsTimerRef.current !== null) {
@@ -39,6 +52,9 @@ export function useDesktopReceiver(session: PairingPayload | null) {
     const retryStartedAt = performance.now();
     setStatus("waiting");
     setError(null);
+    setPendingPairingRequest(null);
+    pendingPairingRequestRef.current = null;
+    approvedDeviceIdRef.current = null;
 
     const send = (message: SignalingMessage) => {
       const socket = socketRef.current;
@@ -52,6 +68,7 @@ export function useDesktopReceiver(session: PairingPayload | null) {
         socket.send(JSON.stringify(envelope));
       }
     };
+    sendRef.current = send;
 
     const closePeer = () => {
       stopStatsPolling();
@@ -149,7 +166,65 @@ export function useDesktopReceiver(session: PairingPayload | null) {
             setStatus("failed");
             return;
           }
+          if (message.type === "hello" && message.role === "phone") {
+            const deviceId = message.deviceId;
+            if (!deviceId) {
+              send({ type: "pairing-rejected", sessionId: session.sessionId, reason: "Phone did not send a device ID." });
+              return;
+            }
+
+            const request: PairingApprovalRequest = {
+              sessionId: session.sessionId,
+              deviceId,
+              deviceName: message.deviceName ?? "Unknown phone",
+              platform: message.platform,
+              userAgent: message.userAgent,
+              pairingCode: message.pairingCode ?? createPairingCode(session, deviceId),
+              requestedAt: new Date().toISOString(),
+              trusted: await isTrustedDevice(deviceId)
+            };
+
+            await recordSecurityAuditEvent(
+              "pairing-requested",
+              `Pairing requested by ${request.deviceName}.`,
+              request.deviceId,
+              request.deviceName
+            );
+
+            if (request.trusted) {
+              approvedDeviceIdRef.current = deviceId;
+              await markTrustedDeviceSeen(deviceId);
+              await recordSecurityAuditEvent(
+                "trusted-device-auto-approved",
+                `Trusted device ${request.deviceName} auto-approved.`,
+                request.deviceId,
+                request.deviceName
+              );
+              send({ type: "pairing-approved", sessionId: session.sessionId, deviceId, trusted: true });
+              return;
+            }
+
+            pendingPairingRequestRef.current = request;
+            setPendingPairingRequest(request);
+            setStatus("pairing");
+            return;
+          }
+          if (message.type === "pairing-rejected") {
+            setError(message.reason);
+            setStatus("failed");
+            return;
+          }
           if (message.type === "offer") {
+            if (!approvedDeviceIdRef.current) {
+              send({
+                type: "pairing-rejected",
+                sessionId: session.sessionId,
+                reason: "Desktop approval is required before streaming."
+              });
+              setError("Blocked a phone stream attempt that was not approved.");
+              setStatus("pairing");
+              return;
+            }
             setStatus("connecting");
             closePeer();
             const peer = ensurePeer();
@@ -213,6 +288,7 @@ export function useDesktopReceiver(session: PairingPayload | null) {
       closePeer();
       socketRef.current?.close();
       socketRef.current = null;
+      sendRef.current = null;
     };
   }, [session, stopStatsPolling]);
 
@@ -232,7 +308,56 @@ export function useDesktopReceiver(session: PairingPayload | null) {
     setStatus("disconnected");
   }
 
-  return { remoteStream, status, metrics, error, disconnect };
+  async function approvePairing(trustThisDevice: boolean) {
+    const request = pendingPairingRequestRef.current;
+    if (!request) return;
+
+    approvedDeviceIdRef.current = request.deviceId;
+    pendingPairingRequestRef.current = null;
+    setPendingPairingRequest(null);
+    setStatus("connecting");
+
+    if (trustThisDevice) {
+      await trustDevice({
+        deviceId: request.deviceId,
+        label: request.deviceName,
+        platform: request.platform,
+        userAgent: request.userAgent
+      });
+    } else {
+      await recordSecurityAuditEvent(
+        "approved-once",
+        `Approved ${request.deviceName} for this session only.`,
+        request.deviceId,
+        request.deviceName
+      );
+    }
+
+    sendRef.current?.({
+      type: "pairing-approved",
+      sessionId: request.sessionId,
+      deviceId: request.deviceId,
+      trusted: trustThisDevice
+    });
+  }
+
+  async function rejectPairing(reason = "Pairing rejected on desktop.") {
+    const request = pendingPairingRequestRef.current;
+    if (!request) return;
+
+    pendingPairingRequestRef.current = null;
+    setPendingPairingRequest(null);
+    setStatus("waiting");
+    await recordSecurityAuditEvent("pairing-rejected", reason, request.deviceId, request.deviceName);
+    sendRef.current?.({
+      type: "pairing-rejected",
+      sessionId: request.sessionId,
+      deviceId: request.deviceId,
+      reason
+    });
+  }
+
+  return { remoteStream, status, metrics, error, pendingPairingRequest, approvePairing, rejectPairing, disconnect };
 }
 
 async function readInboundMetrics(

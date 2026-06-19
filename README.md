@@ -2,9 +2,9 @@
 
 # LensBridge
 
-**Use your phone as a real Windows webcam over your local network.**
+**LensBridge turns your phone into a local-first webcam with explicit pairing, no cloud relay, and native virtual camera output on Windows.**
 
-LensBridge is a local-first phone-to-webcam bridge. It pairs a phone with a desktop using a short-lived QR link, streams the phone camera over WebRTC, previews it in the desktop app, and publishes frames to a Windows DirectShow camera named `LensBridge Camera`.
+LensBridge is a local-first phone-to-webcam bridge. It pairs a phone with a desktop using a short-lived QR link plus explicit desktop approval, streams the phone camera over WebRTC, previews it in the desktop app, and publishes frames to a Windows DirectShow camera named `LensBridge Camera`.
 
 </div>
 
@@ -45,6 +45,9 @@ The current project is a practical V2 Windows bridge. It is not claiming full cr
 | Phone camera PWA | Implemented | Mobile browser uses `getUserMedia` and WebRTC. |
 | Desktop app | Implemented | Tauri v2, React, Rust local services. |
 | QR pairing | Implemented | Random token, local host, local signaling URL, 10-minute pairing TTL. |
+| Pairing approval | Implemented | Unknown phones must be approved or rejected on desktop before WebRTC starts. |
+| Trusted devices | Implemented, local | Desktop allowlist and revocation UI; uses a stable local phone ID, not public-key identity yet. |
+| Security audit log | Implemented, local | Recent pairing/trust events are recorded locally. |
 | Local signaling | Implemented | Rust WebSocket server on the desktop LAN IP. |
 | Desktop preview | Implemented | WebRTC receiver renders the phone stream in the app. |
 | Windows camera output | Implemented, experimental | DirectShow device named `LensBridge Camera`. |
@@ -52,7 +55,7 @@ The current project is a practical V2 Windows bridge. It is not claiming full cr
 | Direct frame transport | Implemented | Raw Tauri IPC frame payload, latest-frame transport, no base64 path in the active bridge. |
 | Phone quality caps | Implemented | 540p/720p/360p profiles to avoid wasteful 4K phone capture. |
 | Native macOS camera | Planned | Not implemented. |
-| Native Linux camera | Planned | v4l2loopback path is planned. |
+| Native Linux camera | Scaffolded | v4l2loopback scripts/docs exist; full frame output is not claimed yet. |
 | AI background blur / autoframe | Scaffolded | Not production behavior yet. |
 | Plugin runtime | Scaffolded | Types/docs exist; runtime loading is future work. |
 
@@ -71,7 +74,7 @@ Current behavior:
 - If the phone is already connected and streaming, LensBridge does not intentionally stop the stream at 10 minutes.
 - If you disconnect, refresh the phone page, restart the desktop app, or reconnect after the old token expires, you need a fresh QR/link.
 
-So "scan once" means once for the current active pairing. Permanent trusted-device pairing is planned, but it is not implemented yet.
+So "scan once" means once for the current active pairing. Trusted devices are now supported locally; a trusted phone can be auto-approved later until it is revoked in the Security page.
 
 -----
 
@@ -118,13 +121,15 @@ flowchart LR
 1. Desktop starts a local signaling server and creates a pairing payload.
 2. Desktop renders a QR code containing the phone URL, LAN host, signaling port, session ID, and token.
 3. Phone opens the PWA, reads the payload, asks for camera permission, and connects to the desktop signaling socket.
-4. Phone and desktop exchange WebRTC offer/answer/candidates through the local signaling server.
-5. Phone sends camera frames over WebRTC.
-6. Desktop previews the stream.
-7. Desktop draws the latest preview frame into a fixed 1280x720 DirectShow output canvas.
-8. The active bridge sends raw RGBA bytes to Rust through Tauri raw IPC.
-9. Rust validates the frame size and writes it into UnityCapture-compatible Windows shared-memory objects.
-10. Windows apps open `LensBridge Camera` from the normal camera picker.
+4. Phone shows a short pairing code and waits for desktop approval.
+5. Desktop approves once, trusts the phone, or rejects the request.
+6. Phone and desktop exchange WebRTC offer/answer/candidates through the local signaling server after approval.
+7. Phone sends camera frames over WebRTC.
+8. Desktop previews the stream.
+9. Desktop draws the latest preview frame into a fixed 1280x720 DirectShow output canvas.
+10. The active bridge sends raw RGBA bytes to Rust through Tauri raw IPC.
+11. Rust validates the frame size and writes it into UnityCapture-compatible Windows shared-memory objects.
+12. Windows apps open `LensBridge Camera` from the normal camera picker.
 
 ### Windows DirectShow Internals
 
@@ -302,9 +307,9 @@ Default phone quality profiles:
 | Balanced | 1280x720 | 30 | Recommended default. |
 | High Quality | 1280x720 | 30 | Higher bitrate 720p. |
 | Battery Saver | 640x360 | 24 | Lower heat and power use. |
-| Custom | 1280x720 | 30 | Placeholder for future custom UI. |
-
 If a website reports `3840x2160`, that may be the camera mode requested by the browser/DirectShow negotiation. The phone capture and LensBridge transport are still capped by the profiles above.
+
+See [BENCHMARKS.md](BENCHMARKS.md) and [docs/performance.md](docs/performance.md) for the benchmark protocol. No public real-hardware 720p30 10-minute baseline is committed yet.
 
 -----
 
@@ -438,19 +443,23 @@ Current protections:
 - 10-minute pairing token TTL.
 - One current pairing payload per desktop runtime.
 - Local network signaling by default.
+- Explicit desktop approval for unknown phones.
+- Matching short pairing code on phone and desktop.
+- Local trusted-device allowlist with revocation.
+- Local security audit events.
 - Driver install/uninstall scripts are explicit and require admin rights.
 
 Current limitations:
 
 - The development phone page is served over plain HTTP for local testing.
 - The local WebSocket signaling path is not WSS in dev mode.
-- Anyone on the same trusted LAN who obtains the active QR/link before expiry can try to pair.
+- Plain HTTP/ws development mode should only be used on trusted LANs.
+- Trusted-device identity currently uses a stable local phone ID, not a public-key credential.
 
 Planned hardening:
 
 - HTTPS/WSS local setup with mkcert or equivalent.
-- Trusted-device persistence.
-- Pairing confirmation prompts.
+- Public-key trusted-device credentials.
 - Optional PIN/passphrase pairing.
 - Better firewall/setup diagnostics.
 - Release signing and provenance hardening.

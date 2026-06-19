@@ -21,8 +21,7 @@ use state::AppState;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[cfg(target_os = "windows")]
-const WEBVIEW_BROWSER_ARGS: &str =
-    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+const WEBVIEW_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 
 fn main() {
     tauri::Builder::default()
@@ -54,6 +53,13 @@ fn main() {
             commands::regenerate_pairing_session,
             commands::get_runtime_status,
             commands::disconnect_session,
+            commands::list_trusted_devices,
+            commands::is_trusted_device,
+            commands::trust_device,
+            commands::mark_trusted_device_seen,
+            commands::revoke_trusted_device,
+            commands::record_security_audit_event,
+            commands::list_security_audit_events,
             commands::list_source_statuses,
             commands::get_virtual_camera_status,
             commands::get_obs_virtual_camera_status,

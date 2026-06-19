@@ -1,6 +1,7 @@
 use crate::{
     network::{local_ip::detect_local_ip, ports::find_available_port},
     pairing::{qr_payload::PairingPayload, session::SessionManager},
+    security::{allowlist::TrustedDeviceStore, audit_log::SecurityAuditLog},
     signaling::{router::SignalingHub, server::SignalingServer},
 };
 use serde::Serialize;
@@ -13,6 +14,8 @@ pub struct AppState {
     pub local_host: String,
     pub signaling_port: u16,
     pub desktop_name: String,
+    pub trusted_devices: Arc<TrustedDeviceStore>,
+    pub audit_log: Arc<SecurityAuditLog>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -42,6 +45,8 @@ impl AppState {
             local_host,
             signaling_port,
             desktop_name,
+            trusted_devices: Arc::new(TrustedDeviceStore::new_default()),
+            audit_log: Arc::new(SecurityAuditLog::new_default()),
         }
     }
 

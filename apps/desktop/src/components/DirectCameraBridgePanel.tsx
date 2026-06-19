@@ -46,6 +46,9 @@ export function DirectCameraBridgePanel({ bridge, compact = false }: DirectCamer
           <Metric label="Resolution" value={bridge.resolution} />
           <Metric label="FPS" value={isStreaming ? String(bridge.fps || "-") : "-"} />
           <Metric label="Frames" value={bridge.framesDelivered ? bridge.framesDelivered.toLocaleString() : "0"} />
+          <Metric label="Dropped" value={bridge.droppedFrames ? bridge.droppedFrames.toLocaleString() : "0"} />
+          <Metric label="Avg send" value={formatMs(bridge.averageFrameSendMs)} />
+          <Metric label="p95 send" value={formatMs(bridge.p95FrameSendMs)} />
         </div>
       </div>
 
@@ -63,6 +66,10 @@ export function DirectCameraBridgePanel({ bridge, compact = false }: DirectCamer
       ) : null}
     </section>
   );
+}
+
+function formatMs(value: number) {
+  return value > 0 ? `${value.toFixed(1)} ms` : "-";
 }
 
 function StatusPill({ status }: { status: DirectCameraBridgeState["status"] }) {

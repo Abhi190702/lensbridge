@@ -29,12 +29,16 @@ Implemented/current:
 - Honest OBS Virtual Camera guide for Windows/macOS.
 - Reconnect hardening.
 - Better metrics and diagnostics.
+- Explicit pairing approval.
+- Local trusted-device allowlist with revocation.
+- Frame-pump benchmark protocol and UI counters.
 
 Planned:
 
-- Native receiver path that avoids WebView canvas/base64 frame transport.
+- Native receiver path that avoids WebView canvas readback and IPC pixel copies. This remains critical if benchmarks cannot sustain 720p30 for 10 minutes.
 - Linux v4l2loopback pipeline.
 - FFmpeg/GStreamer frame bridge.
+- Local TLS/mkcert mode for HTTPS/WSS development and local use.
 
 ## V3 — Universal Source Expansion
 

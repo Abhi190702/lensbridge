@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPairingPayload, isSignalingMessage } from ".";
+import { createPairingCode, isPairingPayload, isSignalingMessage } from ".";
 
 describe("shared validators", () => {
   it("accepts a valid pairing payload", () => {
@@ -26,5 +26,13 @@ describe("shared validators", () => {
 
   it("recognizes signaling messages by type", () => {
     expect(isSignalingMessage({ type: "disconnect", sessionId: "session" })).toBe(true);
+  });
+
+  it("creates stable six digit pairing codes without exposing the long token", () => {
+    const code = createPairingCode({ sessionId: "session", token: "secret-token" }, "phone-1");
+
+    expect(code).toMatch(/^\d{6}$/);
+    expect(createPairingCode({ sessionId: "session", token: "secret-token" }, "phone-1")).toBe(code);
+    expect(createPairingCode({ sessionId: "session", token: "other-token" }, "phone-1")).not.toBe(code);
   });
 });

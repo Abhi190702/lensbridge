@@ -8,13 +8,29 @@ export type SignalingMessage =
       role: SignalingRole;
       sessionId: string;
       token: string;
+      deviceId?: string;
       deviceName?: string;
+      platform?: string;
+      userAgent?: string;
+      pairingCode?: string;
     }
   | {
       type: "hello-ack";
       sessionId: string;
       accepted: boolean;
       reason?: string;
+    }
+  | {
+      type: "pairing-approved";
+      sessionId: string;
+      deviceId?: string;
+      trusted: boolean;
+    }
+  | {
+      type: "pairing-rejected";
+      sessionId: string;
+      deviceId?: string;
+      reason: string;
     }
   | {
       type: "offer";

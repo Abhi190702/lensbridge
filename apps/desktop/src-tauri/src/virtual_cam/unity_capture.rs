@@ -1,5 +1,6 @@
 use crate::errors::{LensBridgeError, LensBridgeResult};
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,20 +21,21 @@ pub struct UnityCapturePublishResult {
     pub width: u32,
     pub height: u32,
     pub message: String,
+    pub rust_frame_write_micros: Option<u64>,
 }
 
 pub fn publish_unity_capture_frame(
     payload: UnityCaptureFramePayload,
 ) -> LensBridgeResult<UnityCapturePublishResult> {
+    let started_at = Instant::now();
+
     #[cfg(target_os = "windows")]
-    {
-        windows_bridge::publish(payload)
-    }
+    let mut result = { windows_bridge::publish(payload)? };
 
     #[cfg(not(target_os = "windows"))]
-    {
+    let mut result = {
         let _ = payload;
-        Ok(UnityCapturePublishResult {
+        UnityCapturePublishResult {
             ready: false,
             delivered: false,
             skipped_frame: false,
@@ -41,8 +43,12 @@ pub fn publish_unity_capture_frame(
             width: 0,
             height: 0,
             message: "UnityCapture DirectShow output is only available on Windows.".into(),
-        })
-    }
+            rust_frame_write_micros: None,
+        }
+    };
+
+    result.rust_frame_write_micros = Some(started_at.elapsed().as_micros() as u64);
+    Ok(result)
 }
 
 pub fn publish_unity_capture_frame_binary(
@@ -72,15 +78,15 @@ pub fn publish_unity_capture_frame_binary(
     let mirror = payload[8] != 0;
     let rgba = &payload[HEADER_BYTES..];
 
+    let started_at = Instant::now();
+
     #[cfg(target_os = "windows")]
-    {
-        windows_bridge::publish_raw(width, height, mirror, rgba)
-    }
+    let mut result = { windows_bridge::publish_raw(width, height, mirror, rgba)? };
 
     #[cfg(not(target_os = "windows"))]
-    {
+    let mut result = {
         validate_frame(width, height, rgba)?;
-        Ok(UnityCapturePublishResult {
+        UnityCapturePublishResult {
             ready: false,
             delivered: false,
             skipped_frame: false,
@@ -88,8 +94,12 @@ pub fn publish_unity_capture_frame_binary(
             width,
             height,
             message: "UnityCapture DirectShow output is only available on Windows.".into(),
-        })
-    }
+            rust_frame_write_micros: None,
+        }
+    };
+
+    result.rust_frame_write_micros = Some(started_at.elapsed().as_micros() as u64);
+    Ok(result)
 }
 
 pub fn reset_unity_capture_bridge() -> LensBridgeResult<()> {
@@ -230,6 +240,7 @@ mod windows_bridge {
             width,
             height,
             message: message.into(),
+            rust_frame_write_micros: None,
         }
     }
 
@@ -312,6 +323,7 @@ mod windows_bridge {
                 } else {
                     format!("Frame delivered to LensBridge Camera ({receiver_label}).")
                 },
+                rust_frame_write_micros: None,
             })
         }
 
@@ -486,6 +498,7 @@ mod windows_bridge {
                     } else {
                         "Frame delivered to LensBridge Camera.".into()
                     },
+                    rust_frame_write_micros: None,
                 })
             }
         }

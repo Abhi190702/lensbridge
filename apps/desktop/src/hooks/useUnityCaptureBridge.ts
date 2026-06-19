@@ -15,6 +15,11 @@ export interface DirectCameraBridgeState {
   enabled: boolean;
   fps: number;
   framesDelivered: number;
+  droppedFrames: number;
+  averageFrameSendMs: number;
+  p95FrameSendMs: number;
+  lastFrameSendMs: number;
+  rustFrameWriteMs: number;
   resolution: string;
   message: string;
   skippedFrame: boolean;
@@ -29,6 +34,11 @@ const INITIAL_STATE: DirectCameraBridgeState = {
   enabled: true,
   fps: 0,
   framesDelivered: 0,
+  droppedFrames: 0,
+  averageFrameSendMs: 0,
+  p95FrameSendMs: 0,
+  lastFrameSendMs: 0,
+  rustFrameWriteMs: 0,
   resolution: `${TARGET_WIDTH}x${TARGET_HEIGHT}`,
   message: "Connect your phone, then select LensBridge Camera in Chrome or another app.",
   skippedFrame: false
@@ -40,6 +50,8 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
   const lastFps = useRef(0);
   const lastUiUpdateAt = useRef(0);
   const latestFrame = useRef<CapturedFrame | null>(null);
+  const droppedFrameCount = useRef(0);
+  const frameSendDurations = useRef<number[]>([]);
 
   useEffect(() => {
     let disposed = false;
@@ -87,6 +99,8 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
     lastFps.current = 0;
     lastUiUpdateAt.current = 0;
     latestFrame.current = null;
+    droppedFrameCount.current = 0;
+    frameSendDurations.current = [];
 
     function captureLatestFrame(now = performance.now()) {
       if (disposed || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
@@ -95,6 +109,9 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
       lastCaptureAt = now;
       drawDirectShowFrame(frameContext, video, TARGET_WIDTH, TARGET_HEIGHT);
       const imageData = frameContext.getImageData(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+      if (latestFrame.current) {
+        droppedFrameCount.current += 1;
+      }
       latestFrame.current = {
         bytes: new Uint8Array(imageData.data.buffer, imageData.data.byteOffset, imageData.data.byteLength)
       };
@@ -116,6 +133,24 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
         captureLatestFrame(now);
         scheduleCapture();
       });
+    }
+
+    function recordFrameSendDuration(durationMs: number) {
+      frameSendDurations.current.push(durationMs);
+      if (frameSendDurations.current.length > 240) {
+        frameSendDurations.current.shift();
+      }
+    }
+
+    function averageFrameSendDuration() {
+      if (!frameSendDurations.current.length) return 0;
+      return frameSendDurations.current.reduce((total, value) => total + value, 0) / frameSendDurations.current.length;
+    }
+
+    function p95FrameSendDuration() {
+      if (!frameSendDurations.current.length) return 0;
+      const sorted = [...frameSendDurations.current].sort((left, right) => left - right);
+      return sorted[Math.floor((sorted.length - 1) * 0.95)] ?? 0;
     }
 
     async function flushLatestFrame() {
@@ -148,6 +183,8 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
           rgbaBytes: frame.bytes,
           mirror
         });
+        const sendDurationMs = performance.now() - startedAt;
+        recordFrameSendDuration(sendDurationMs);
 
         if (disposed) return;
 
@@ -162,6 +199,11 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
           status: "waitingForTarget",
           fps: 0,
           framesDelivered: result.framesDelivered,
+          droppedFrames: droppedFrameCount.current,
+          averageFrameSendMs: averageFrameSendDuration(),
+          p95FrameSendMs: p95FrameSendDuration(),
+          lastFrameSendMs: sendDurationMs,
+          rustFrameWriteMs: microsToMs(result.rustFrameWriteMicros),
           resolution: `${TARGET_WIDTH}x${TARGET_HEIGHT}`,
           message: result.message,
           skippedFrame: false
@@ -201,6 +243,11 @@ export function useUnityCaptureBridge(stream: MediaStream | null, mirror: boolea
         enabled: true,
         fps,
         framesDelivered: result.framesDelivered,
+        droppedFrames: droppedFrameCount.current,
+        averageFrameSendMs: averageFrameSendDuration(),
+        p95FrameSendMs: p95FrameSendDuration(),
+        lastFrameSendMs: frameSendDurations.current.at(-1) ?? 0,
+        rustFrameWriteMs: microsToMs(result.rustFrameWriteMicros),
         resolution: `${result.width}x${result.height}`,
         message: result.message,
         skippedFrame: result.skippedFrame
@@ -247,6 +294,10 @@ function nextActiveDelay(startedAt: number, receiverSkippedFrame: boolean) {
   const elapsedMs = performance.now() - startedAt;
   const targetInterval = receiverSkippedFrame ? ACTIVE_INTERVAL_MS * 1.2 : ACTIVE_INTERVAL_MS;
   return Math.max(0, targetInterval - elapsedMs);
+}
+
+function microsToMs(value?: number) {
+  return value ? value / 1000 : 0;
 }
 
 function drawDirectShowFrame(

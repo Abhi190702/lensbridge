@@ -1,10 +1,12 @@
 import {
+  createPairingCode,
   getQualityProfile,
   type PairingPayload,
   type QualityProfileId,
   type SignalingMessage,
   type StreamMetrics
 } from "@lensbridge/shared";
+import { getPhoneDeviceIdentity } from "../pairing/deviceIdentity";
 import { SignalingClient } from "./signalingClient";
 import { readOutboundMetrics, type OutboundMetricsSample } from "./metrics";
 
@@ -41,6 +43,8 @@ export async function startPhonePeer({
   let stopped = false;
   let activeQuality = quality;
   const videoSenders: RTCRtpSender[] = [];
+  const identity = getPhoneDeviceIdentity();
+  const pairingCode = createPairingCode(pairing, identity.deviceId);
 
   for (const track of stream.getTracks()) {
     if (track.kind === "video") {
@@ -73,6 +77,17 @@ export async function startPhonePeer({
       stopPeer(false);
       return;
     }
+    if (message.type === "pairing-approved") {
+      onStatus(message.trusted ? "trusted-approved" : "approved");
+      await createAndSendOffer(false);
+      client.send({ type: "stream-started", sessionId: pairing.sessionId });
+    }
+    if (message.type === "pairing-rejected") {
+      onError?.(message.reason);
+      onStatus("rejected");
+      stopPeer(false);
+      return;
+    }
     if (message.type === "answer") {
       await peer.setRemoteDescription(message.sdp);
       onStatus("connected");
@@ -91,8 +106,18 @@ export async function startPhonePeer({
   });
 
   await client.connect();
-  await createAndSendOffer(false);
-  client.send({ type: "stream-started", sessionId: pairing.sessionId });
+  onStatus("awaiting-approval");
+  client.send({
+    type: "hello",
+    role: "phone",
+    sessionId: pairing.sessionId,
+    token: pairing.token,
+    deviceId: identity.deviceId,
+    deviceName: identity.deviceName,
+    platform: identity.platform,
+    userAgent: identity.userAgent,
+    pairingCode
+  });
 
   metricsTimer = window.setInterval(async () => {
     if (stopped) return;
